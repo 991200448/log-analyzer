@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analyzer</title>
+    <style>
+        :root {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-secondary: rgba(255, 255, 255, 0.05);
+            --bg-tertiary: rgba(0, 0, 0, 0.3);
+            --bg-tertiary-hover: rgba(0, 0, 0, 0.5);
+            --bg-modal: #1a1a2e;
+            --bg-raw: #0d0d1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaa;
+            --text-muted: #666;
+            --text-accent: #00d4ff;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --border-input: rgba(255, 255, 255, 0.2);
+            --scrollbar-track: rgba(255, 255, 255, 0.05);
+            --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --btn-disabled: #555;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+        [data-theme="light"] {
+            --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            --bg-secondary: rgba(0, 0, 0, 0.03);
+            --bg-tertiary: rgba(0, 0, 0, 0.05);
+            --bg-tertiary-hover: rgba(0, 0, 0, 0.08);
+            --bg-modal: #ffffff;
+            --bg-raw: #f8f9fa;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+            --text-accent: #0088cc;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --border-input: rgba(0, 0, 0, 0.15);
+            --scrollbar-track: rgba(0, 0, 0, 0.05);
+            --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+            --input-bg: rgba(0, 0, 0, 0.03);
+            --btn-disabled: #aaaaaa;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: var(--text-accent);
+        }
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .theme-toggle label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .theme-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--input-bg);
+            border: 1px solid var(--border-input);
+            border-radius: 30px;
+            transition: 0.3s;
+        }
+        .theme-slider:before {
+            position: absolute;
+            content: "🌙";
+            height: 24px;
+            width: 24px;
+            left: 2px;
+            bottom: 2px;
+            background: var(--bg-modal);
+            border-radius: 50%;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        input:checked + .theme-slider:before {
+            content: "☀️";
+            transform: translateX(30px);
+        }
+        .upload-section {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 2px dashed var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .upload-section.drag-over {
+            border-color: var(--text-accent);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        .upload-section.drag-over .drop-hint {
+            opacity: 1;
+        }
+        .drop-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: var(--text-accent);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+        .drop-hint-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .upload-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .file-input-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #fff;
+        }
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .file-name {
+            margin-left: 15px;
+            color: var(--text-accent);
+            font-size: 14px;
+        }
+        .time-filter {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .time-filter label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .datetime-input {
+            padding: 10px 15px;
+            border: 1px solid var(--border-input);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            min-width: 200px;
+        }
+        [data-theme="dark"] .datetime-input::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        .datetime-input:focus {
+            outline: none;
+            border-color: var(--text-accent);
+        }
+        .clear-time-btn {
+            padding: 10px 15px;
+            border: 1px solid var(--border-input);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .clear-time-btn:hover {
+            background: var(--bg-tertiary);
+        }
+        .parse-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .parse-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+        .parse-btn:disabled {
+            background: var(--btn-disabled);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px var(--shadow-color);
+        }
+        .stat-card.debug { border-left: 4px solid #2196F3; }
+        .stat-card.info { border-left: 4px solid #4CAF50; }
+        .stat-card.warn { border-left: 4px solid #FF9800; }
+        .stat-card.error { border-left: 4px solid #f44336; }
+        .stat-card.duplicate { border-left: 4px solid #9C27B0; }
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-card.debug .stat-number { color: #2196F3; }
+        .stat-card.info .stat-number { color: #4CAF50; }
+        .stat-card.warn .stat-number { color: #FF9800; }
+        .stat-card.error .stat-number { color: #f44336; }
+        .stat-card.duplicate .stat-number { color: #9C27B0; }
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .filter-section {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: background 0.3s ease, border 0.3s ease;
+        }
+        .filter-title {
+            margin-bottom: 15px;
+            color: var(--text-accent);
+            font-size: 16px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: var(--input-bg);
+            color: var(--text-primary);
+        }
+        .filter-btn.active {
+            transform: scale(1.05);
+        }
+        .filter-btn.debug { border-color: #2196F3; }
+        .filter-btn.debug.active { background: #2196F3; color: #fff; }
+        .filter-btn.info { border-color: #4CAF50; }
+        .filter-btn.info.active { background: #4CAF50; color: #fff; }
+        .filter-btn.warn { border-color: #FF9800; }
+        .filter-btn.warn.active { background: #FF9800; color: #fff; }
+        .filter-btn.error { border-color: #f44336; }
+        .filter-btn.error.active { background: #f44336; color: #fff; }
+        .filter-btn.all { border-color: var(--text-accent); }
+        .filter-btn.all.active { background: var(--text-accent); color: #fff; }
+        .filter-btn.duplicate { border-color: #9C27B0; }
+        .filter-btn.duplicate.active { background: #9C27B0; color: #fff; }
+        .search-box {
+            margin-top: 15px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-input);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--text-accent);
+        }
+        .results-section {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            transition: background 0.3s ease, border 0.3s ease;
+        }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .results-title {
+            color: var(--text-accent);
+            font-size: 18px;
+        }
+        .results-count {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .log-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .log-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .log-list::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 4px;
+        }
+        .log-list::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 4px;
+        }
+        .log-item {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #666;
+            transition: all 0.3s ease;
+        }
+        .log-item:hover {
+            background: var(--bg-tertiary-hover);
+        }
+        .log-item.debug { border-left-color: #2196F3; }
+        .log-item.info { border-left-color: #4CAF50; }
+        .log-item.warn { border-left-color: #FF9800; }
+        .log-item.error { border-left-color: #f44336; }
+        .log-item.duplicate { border-left-color: #9C27B0; }
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .log-level {
+            padding: 4px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #fff;
+        }
+        .log-level.debug { background: #2196F3; }
+        .log-level.info { background: #4CAF50; }
+        .log-level.warn { background: #FF9800; }
+        .log-level.error { background: #f44336; }
+        .log-time {
+            color: var(--text-accent);
+            font-size: 13px;
+        }
+        .log-count {
+            background: #9C27B0;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .log-thread {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .log-class {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .log-message {
+            color: var(--text-primary);
+            font-size: 14px;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+        .log-traceId {
+            color: var(--text-muted);
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-accent);
+        }
+        .export-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: var(--text-accent);
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination button.active {
+            background: var(--text-accent);
+            border-color: var(--text-accent);
+            color: #fff;
+        }
+        .page-info {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .page-size-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .page-size-select option {
+            background: var(--bg-modal);
+        }
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .page-jump input {
+            width: 60px;
+            padding: 8px;
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            text-align: center;
+        }
+        .raw-btn {
+            background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%) !important;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+        }
+        [data-theme="light"] .modal {
+            background: rgba(255, 255, 255, 0.98);
+        }
+        .modal.show {
+            display: block;
+        }
+        .modal-content {
+            background: var(--bg-modal);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .modal-header h2 {
+            color: var(--text-accent);
+            margin: 0;
+            font-size: 18px;
+        }
+        .modal-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            max-width: 500px;
+            min-width: 200px;
+        }
+        .modal-search input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        .modal-search input:focus {
+            outline: none;
+            border-color: var(--text-accent);
+        }
+        .modal-search-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border-input);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .modal-search-btn:hover {
+            background: var(--text-accent);
+            color: #fff;
+        }
+        .search-count {
+            color: var(--text-secondary);
+            font-size: 13px;
+            min-width: 80px;
+        }
+        .modal-close {
+            background: var(--input-bg);
+            border: none;
+            color: var(--text-primary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .modal-close:hover {
+            background: #f44336;
+            color: #fff;
+        }
+        .highlight {
+            background: #ffeb3b;
+            color: #000;
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+        [data-theme="dark"] .highlight {
+            background: #ffc107;
+        }
+        .modal-body {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .raw-info {
+            padding: 12px 20px;
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--text-accent);
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .raw-content {
+            flex: 1;
+            overflow: auto;
+            padding: 15px 20px;
+            margin: 0;
+            color: var(--text-primary);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: var(--bg-raw);
+        }
+        .raw-content::-webkit-scrollbar {
+            width: 10px;
+        }
+        .raw-content::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+        .raw-content::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div class="container">
+        <div class="header-row">
+            <h1>日志分析工具</h1>
+            <div class="theme-toggle">
+                <label>主题</label>
+                <label class="theme-switch">
+                    <input type="checkbox" id="themeToggle">
+                    <span class="theme-slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="upload-section" id="dropZone">
+            <div class="drop-hint">
+                <div class="drop-hint-icon">📄</div>
+                <div>释放文件以上传</div>
+            </div>
+            <div class="upload-row">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".log,.txt">
+                    <label for="fileInput" class="file-label">选择日志文件</label>
+                </div>
+                <span class="file-name" id="fileName">或拖拽文件到此处</span>
+                
+                <div class="time-filter">
+                    <label>起始时间:</label>
+                    <input type="datetime-local" id="startTime" class="datetime-input">
+                    <button class="clear-time-btn" id="clearTimeBtn">清除</button>
+                </div>
+                
+                <button class="parse-btn" id="parseBtn" disabled>开始解析</button>
+                <button class="parse-btn raw-btn" id="viewRawBtn" disabled>查看原文</button>
+            </div>
+        </div>
+        
+        <div class="stats-section" id="statsSection" style="display: none;">
+            <div class="stat-card debug">
+                <div class="stat-number" id="debugCount">0</div>
+                <div class="stat-label">DEBUG</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-number" id="infoCount">0</div>
+                <div class="stat-label">INFO</div>
+            </div>
+            <div class="stat-card warn">
+                <div class="stat-number" id="warnCount">0</div>
+                <div class="stat-label">WARN</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-number" id="errorCount">0</div>
+                <div class="stat-label">ERROR</div>
+            </div>
+            <div class="stat-card duplicate">
+                <div class="stat-number" id="duplicateCount">0</div>
+                <div class="stat-label">重复日志组</div>
+            </div>
+        </div>
+        
+        <div class="filter-section" id="filterSection" style="display: none;">
+            <div class="filter-title">日志级别筛选</div>
+            <div class="filter-buttons">
+                <button class="filter-btn all active" data-level="all">全部</button>
+                <button class="filter-btn debug" data-level="DEBUG">DEBUG</button>
+                <button class="filter-btn info" data-level="INFO">INFO</button>
+                <button class="filter-btn warn" data-level="WARN">WARN</button>
+                <button class="filter-btn error" data-level="ERROR">ERROR</button>
+                <button class="filter-btn duplicate" data-level="DUPLICATE">重复日志</button>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索日志内容...">
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div class="results-header">
+                <span class="results-title">解析结果</span>
+                <div>
+                    <span class="results-count" id="resultsCount">共 0 条</span>
+                    <button class="export-btn" id="exportBtn" style="display: none;">导出结果</button>
+                </div>
+            </div>
+            <div class="log-list" id="logList">
+                <div class="no-data">请上传日志文件并点击解析</div>
+            </div>
+            <div class="pagination" id="pagination" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="rawModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>原始日志</h2>
+                <div class="modal-search">
+                    <input type="text" id="rawSearchInput" placeholder="搜索关键词...">
+                    <span class="search-count" id="searchCount"></span>
+                    <button class="modal-search-btn" id="searchPrevBtn" title="上一个">↑</button>
+                    <button class="modal-search-btn" id="searchNextBtn" title="下一个">↓</button>
+                </div>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="raw-info" id="rawInfo"></div>
+                <pre class="raw-content" id="rawContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allLogs = [];
+        let rawLogContent = '';
+        let filteredLogs = [];
+        let duplicateGroups = {};
+        let currentFilter = 'all';
+        let searchKeyword = '';
+        let currentPage = 1;
+        let pageSize = 100;
+        let parseWorker = null;
+        let rawLinesCache = [];
+        let rawTotalLines = 0;
+
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const parseBtn = document.getElementById('parseBtn');
+        const viewRawBtn = document.getElementById('viewRawBtn');
+        const logList = document.getElementById('logList');
+        const statsSection = document.getElementById('statsSection');
+        const filterSection = document.getElementById('filterSection');
+        const rawModal = document.getElementById('rawModal');
+        const closeModal = document.getElementById('closeModal');
+        const rawContent = document.getElementById('rawContent');
+        const rawInfo = document.getElementById('rawInfo');
+        const rawSearchInput = document.getElementById('rawSearchInput');
+        const searchCount = document.getElementById('searchCount');
+        const searchPrevBtn = document.getElementById('searchPrevBtn');
+        const searchNextBtn = document.getElementById('searchNextBtn');
+        const searchInput = document.getElementById('searchInput');
+        const exportBtn = document.getElementById('exportBtn');
+        const pagination = document.getElementById('pagination');
+        const clearTimeBtn = document.getElementById('clearTimeBtn');
+        const themeToggle = document.getElementById('themeToggle');
+
+        const savedTheme = localStorage.getItem('logAnalyzerTheme') || 'dark';
+        document.body.setAttribute('data-theme', savedTheme);
+        themeToggle.checked = savedTheme === 'light';
+
+        themeToggle.addEventListener('change', function() {
+            const newTheme = this.checked ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('logAnalyzerTheme', newTheme);
+        });
+
+        clearTimeBtn.addEventListener('click', function() {
+            document.getElementById('startTime').value = '';
+        });
+
+        const workerCode = `
+            const logPattern = /^\\[traceId:([^\\]]*)\\]\\s+(\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+\\[([^\\]]+)\\]\\s+(DEBUG|INFO|ERROR|WARN)\\s+(.+?)\\[(\\d+)\\]\\s+-\\s+(.*)\\r?$/;
+            
+            self.onmessage = function(e) {
+                const { lines, filterTime, chunkIndex, totalChunks } = e.data;
+                const results = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].replace(/\\r/g, '');
+                    if (!line.trim()) continue;
+                    
+                    const match = line.match(logPattern);
+                    if (match) {
+                        const logEntry = {
+                            traceId: match[1].trim(),
+                            time: match[2],
+                            thread: match[3],
+                            level: match[4],
+                            className: match[5].trim(),
+                            lineNum: match[6],
+                            message: match[7].trim()
+                        };
+                        
+                        if (filterTime) {
+                            const logTime = new Date(logEntry.time.replace(' ', 'T'));
+                            if (logTime < filterTime) continue;
+                        }
+                        
+                        results.push(logEntry);
+                    }
+                }
+                
+                self.postMessage({ results, chunkIndex, totalChunks });
+            };
+        `;
+
+        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(workerBlob);
+
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                fileName.textContent = `${file.name} (${formatFileSize(file.size)})`;
+                parseBtn.disabled = false;
+                viewRawBtn.disabled = false;
+            } else {
+                fileName.textContent = '或拖拽文件到此处';
+                parseBtn.disabled = true;
+                viewRawBtn.disabled = true;
+            }
+        });
+
+        const dropZone = document.getElementById('dropZone');
+
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.log') || file.name.endsWith('.txt') || file.type === 'text/plain') {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    fileName.textContent = `${file.name} (${formatFileSize(file.size)})`;
+                    parseBtn.disabled = false;
+                    viewRawBtn.disabled = false;
+                } else {
+                    alert('请上传 .log 或 .txt 格式的日志文件');
+                }
+            }
+        });
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        parseBtn.addEventListener('click', function() {
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            logList.innerHTML = '<div class="loading">正在解析... <span id="parseProgress">0%</span></div>';
+            statsSection.style.display = 'none';
+            filterSection.style.display = 'none';
+            
+            parseFileWithWorker(file);
+        });
+
+        function parseFileWithWorker(file) {
+            const startTimeValue = document.getElementById('startTime').value;
+            const filterTime = startTimeValue ? new Date(startTimeValue) : null;
+            
+            allLogs = [];
+            
+            const CHUNK_SIZE = 1024 * 1024;
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            let currentChunk = 0;
+            let processedChunks = 0;
+            let leftover = '';
+            
+            const progressSpan = document.getElementById('parseProgress');
+            
+            if (parseWorker) {
+                parseWorker.terminate();
+            }
+            
+            parseWorker = new Worker(workerUrl);
+            
+            parseWorker.onmessage = function(e) {
+                const { results, chunkIndex, totalChunks: workerTotalChunks } = e.data;
+                allLogs = allLogs.concat(results);
+                processedChunks++;
+                
+                const progress = Math.round((processedChunks / workerTotalChunks) * 100);
+                if (progressSpan) {
+                    progressSpan.textContent = `${progress}% (${allLogs.length} 条日志)`;
+                }
+                
+                if (processedChunks >= workerTotalChunks) {
+                    finishParsing();
+                }
+            };
+            
+            const reader = new FileReader();
+            
+            function readNextChunk() {
+                const start = currentChunk * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const blob = file.slice(start, end);
+                reader.readAsText(blob);
+            }
+            
+            reader.onload = function(e) {
+                let chunk = leftover + e.target.result;
+                let lines = chunk.split('\n');
+                
+                if (currentChunk < totalChunks - 1) {
+                    leftover = lines.pop() || '';
+                } else {
+                    leftover = '';
+                }
+                
+                if (lines.length > 0) {
+                    parseWorker.postMessage({
+                        lines: lines,
+                        filterTime: filterTime,
+                        chunkIndex: currentChunk,
+                        totalChunks: totalChunks
+                    });
+                } else {
+                    processedChunks++;
+                    if (processedChunks >= totalChunks) {
+                        finishParsing();
+                    }
+                }
+                
+                currentChunk++;
+                if (currentChunk < totalChunks) {
+                    setTimeout(readNextChunk, 0);
+                }
+            };
+            
+            reader.onerror = function() {
+                logList.innerHTML = '<div class="no-data">文件读取失败</div>';
+            };
+            
+            readNextChunk();
+        }
+
+        function finishParsing() {
+            findDuplicates();
+            updateStats();
+            currentPage = 1;
+            applyFilter();
+            
+            statsSection.style.display = 'grid';
+            filterSection.style.display = 'block';
+            exportBtn.style.display = 'inline-block';
+        }
+
+        viewRawBtn.addEventListener('click', function() {
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            loadRawLog(file);
+        });
+
+        async function loadRawLog(file) {
+            rawInfo.textContent = '正在加载...';
+            rawModal.classList.add('show');
+            rawLinesCache = [];
+            rawTotalLines = 0;
+            
+            const CHUNK_SIZE = 2 * 1024 * 1024;
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            let currentChunk = 0;
+            let leftover = '';
+            
+            const reader = new FileReader();
+            
+            function readNextChunk() {
+                return new Promise((resolve, reject) => {
+                    const start = currentChunk * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const blob = file.slice(start, end);
+                    
+                    reader.onload = (e) => {
+                        let chunk = leftover + e.target.result;
+                        let lines = chunk.split('\n');
+                        
+                        if (currentChunk < totalChunks - 1) {
+                            leftover = lines.pop() || '';
+                        }
+                        
+                        rawLinesCache = rawLinesCache.concat(lines);
+                        rawTotalLines = rawLinesCache.length;
+                        
+                        rawInfo.textContent = `加载中... ${rawTotalLines} 行`;
+                        
+                        currentChunk++;
+                        resolve();
+                    };
+                    reader.onerror = reject;
+                    reader.readAsText(blob);
+                });
+            }
+            
+            while (currentChunk < totalChunks) {
+                await readNextChunk();
+            }
+            
+            showRawLogFromCache();
+        }
+
+        function showRawLogFromCache() {
+            const startTimeValue = document.getElementById('startTime').value;
+            
+            let filterTime = null;
+            if (startTimeValue) {
+                filterTime = new Date(startTimeValue);
+            }
+            
+            const timePattern = /\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/;
+            let startIndex = 0;
+            
+            if (filterTime) {
+                for (let i = 0; i < rawLinesCache.length; i++) {
+                    const match = rawLinesCache[i].match(timePattern);
+                    if (match) {
+                        const logTime = new Date(match[0].replace(' ', 'T'));
+                        if (logTime >= filterTime) {
+                            startIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            const displayLines = rawLinesCache.slice(startIndex, startIndex + 5000);
+            const totalDisplayLines = rawLinesCache.length - startIndex;
+            
+            rawInfo.textContent = `起始时间: ${startTimeValue || '无'} | 显示行数: ${displayLines.length} / ${totalDisplayLines}${totalDisplayLines > 5000 ? ' (仅显示前5000行)' : ''}`;
+            originalRawContent = displayLines.join('\n');
+            rawContent.innerHTML = escapeHtml(originalRawContent);
+            rawSearchInput.value = '';
+            searchCount.textContent = '';
+            searchMatches = [];
+            currentMatchIndex = -1;
+        }
+
+        closeModal.addEventListener('click', function() {
+            rawModal.classList.remove('show');
+        });
+
+        rawModal.addEventListener('click', function(e) {
+            if (e.target === rawModal) {
+                rawModal.classList.remove('show');
+            }
+        });
+
+        let searchMatches = [];
+        let currentMatchIndex = -1;
+        let originalRawContent = '';
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function highlightSearch(text, keyword) {
+            if (!keyword) return escapeHtml(text);
+            const escaped = escapeHtml(text);
+            const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return escaped.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function performSearch() {
+            const keyword = rawSearchInput.value.trim();
+            searchMatches = [];
+            currentMatchIndex = -1;
+            
+            if (!keyword) {
+                rawContent.innerHTML = escapeHtml(originalRawContent);
+                searchCount.textContent = '';
+                return;
+            }
+            
+            const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            let match;
+            while ((match = regex.exec(originalRawContent)) !== null) {
+                searchMatches.push(match.index);
+            }
+            
+            rawContent.innerHTML = highlightSearch(originalRawContent, keyword);
+            
+            if (searchMatches.length > 0) {
+                searchCount.textContent = `1/${searchMatches.length}`;
+                currentMatchIndex = 0;
+                scrollToMatch(0);
+            } else {
+                searchCount.textContent = '0/0';
+            }
+        }
+
+        function scrollToMatch(index) {
+            if (index < 0 || index >= searchMatches.length) return;
+            
+            const highlights = rawContent.querySelectorAll('.highlight');
+            highlights.forEach(h => h.style.background = '');
+            
+            if (highlights[index]) {
+                highlights[index].style.background = '#ff9800';
+                highlights[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        rawSearchInput.addEventListener('input', performSearch);
+
+        rawSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                    searchPrevBtn.click();
+                } else {
+                    searchNextBtn.click();
+                }
+            }
+        });
+
+        searchPrevBtn.addEventListener('click', function() {
+            if (searchMatches.length === 0) return;
+            currentMatchIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+            searchCount.textContent = `${currentMatchIndex + 1}/${searchMatches.length}`;
+            scrollToMatch(currentMatchIndex);
+        });
+
+        searchNextBtn.addEventListener('click', function() {
+            if (searchMatches.length === 0) return;
+            currentMatchIndex = (currentMatchIndex + 1) % searchMatches.length;
+            searchCount.textContent = `${currentMatchIndex + 1}/${searchMatches.length}`;
+            scrollToMatch(currentMatchIndex);
+        });
+
+        function findDuplicates() {
+            const messageMap = {};
+            
+            allLogs.forEach((log, index) => {
+                const key = `${log.level}|${log.className}|${log.lineNum}|${log.message}`;
+                if (!messageMap[key]) {
+                    messageMap[key] = [];
+                }
+                messageMap[key].push(log);
+            });
+
+            duplicateGroups = {};
+            Object.keys(messageMap).forEach(key => {
+                if (messageMap[key].length > 1) {
+                    duplicateGroups[key] = {
+                        count: messageMap[key].length,
+                        logs: messageMap[key],
+                        level: messageMap[key][0].level,
+                        className: messageMap[key][0].className,
+                        lineNum: messageMap[key][0].lineNum,
+                        message: messageMap[key][0].message
+                    };
+                }
+            });
+        }
+
+        function updateStats() {
+            const counts = { DEBUG: 0, INFO: 0, WARN: 0, ERROR: 0 };
+            allLogs.forEach(log => {
+                if (counts[log.level] !== undefined) {
+                    counts[log.level]++;
+                }
+            });
+
+            document.getElementById('debugCount').textContent = counts.DEBUG;
+            document.getElementById('infoCount').textContent = counts.INFO;
+            document.getElementById('warnCount').textContent = counts.WARN;
+            document.getElementById('errorCount').textContent = counts.ERROR;
+            document.getElementById('duplicateCount').textContent = Object.keys(duplicateGroups).length;
+        }
+
+        function applyFilter() {
+            let baseLogs = [];
+            
+            if (currentFilter === 'DUPLICATE') {
+                baseLogs = Object.values(duplicateGroups).map(group => ({
+                    ...group.logs[0],
+                    count: group.count,
+                    isDuplicate: true
+                }));
+            } else {
+                baseLogs = allLogs.filter(log => {
+                    if (currentFilter !== 'all' && log.level !== currentFilter) {
+                        return false;
+                    }
+                    if (searchKeyword) {
+                        const searchLower = searchKeyword.toLowerCase();
+                        return log.message.toLowerCase().includes(searchLower) ||
+                               log.className.toLowerCase().includes(searchLower) ||
+                               log.traceId.toLowerCase().includes(searchLower);
+                    }
+                    return true;
+                });
+                
+                const mergedMap = {};
+                baseLogs.forEach(log => {
+                    const key = `${log.level}|${log.className}|${log.lineNum}|${log.message}`;
+                    if (!mergedMap[key]) {
+                        mergedMap[key] = {
+                            ...log,
+                            count: 1,
+                            times: [log.time],
+                            traceIds: [log.traceId],
+                            threads: [log.thread]
+                        };
+                    } else {
+                        mergedMap[key].count++;
+                        mergedMap[key].times.push(log.time);
+                        mergedMap[key].traceIds.push(log.traceId);
+                        mergedMap[key].threads.push(log.thread);
+                    }
+                });
+                
+                baseLogs = Object.values(mergedMap);
+            }
+
+            filteredLogs = baseLogs;
+            renderCurrentPage();
+        }
+
+        function renderCurrentPage() {
+            const totalPages = Math.ceil(filteredLogs.length / pageSize);
+            
+            if (filteredLogs.length === 0) {
+                logList.innerHTML = '<div class="no-data">没有匹配的日志</div>';
+                document.getElementById('resultsCount').textContent = '共 0 条';
+                pagination.style.display = 'none';
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, filteredLogs.length);
+            const pageLogs = filteredLogs.slice(startIndex, endIndex);
+
+            let html = '';
+            pageLogs.forEach(log => {
+                const levelClass = log.level.toLowerCase();
+                const hasMultiple = log.count > 1;
+                
+                html += `
+                    <div class="log-item ${hasMultiple ? 'duplicate' : levelClass}">
+                        <div class="log-header">
+                            <div>
+                                <span class="log-level ${levelClass}">${log.level}</span>
+                                ${hasMultiple ? `<span class="log-count">重复 ${log.count} 次</span>` : ''}
+                            </div>
+                            <span class="log-time">${hasMultiple ? `${log.times[0]} ~ ${log.times[log.times.length - 1]}` : log.time}</span>
+                        </div>
+                        ${hasMultiple && log.traceIds ? `<div class="log-traceId">TraceId: ${log.traceIds.slice(0, 3).join(', ')}${log.traceIds.length > 3 ? '...' : ''}</div>` : `<div class="log-traceId">TraceId: ${log.traceId}</div>`}
+                        <div class="log-thread">线程: ${hasMultiple && log.threads ? `${log.threads.length} 个线程` : log.thread}</div>
+                        <div class="log-class">${log.className}[${log.lineNum}]</div>
+                        <div class="log-message">${escapeHtml(log.message)}</div>
+                    </div>
+                `;
+            });
+
+            logList.innerHTML = html;
+            document.getElementById('resultsCount').textContent = `共 ${filteredLogs.length} 条`;
+            
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+            if (totalPages <= 1) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            pagination.style.display = 'flex';
+            
+            let html = `
+                <select class="page-size-select" id="pageSizeSelect">
+                    <option value="50" ${pageSize === 50 ? 'selected' : ''}>50条/页</option>
+                    <option value="100" ${pageSize === 100 ? 'selected' : ''}>100条/页</option>
+                    <option value="200" ${pageSize === 200 ? 'selected' : ''}>200条/页</option>
+                    <option value="500" ${pageSize === 500 ? 'selected' : ''}>500条/页</option>
+                </select>
+                <button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
+                <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+            `;
+
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            if (startPage > 1) {
+                html += '<span class="page-info">...</span>';
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                html += '<span class="page-info">...</span>';
+            }
+
+            html += `
+                <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+                <button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>末页</button>
+                <div class="page-jump">
+                    <span class="page-info">跳转到</span>
+                    <input type="number" id="pageJumpInput" min="1" max="${totalPages}" value="${currentPage}">
+                    <span class="page-info">页</span>
+                    <button onclick="jumpToPage()">GO</button>
+                </div>
+                <span class="page-info">第 ${currentPage}/${totalPages} 页</span>
+            `;
+
+            pagination.innerHTML = html;
+
+            document.getElementById('pageSizeSelect').addEventListener('change', function() {
+                pageSize = parseInt(this.value);
+                currentPage = 1;
+                renderCurrentPage();
+            });
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredLogs.length / pageSize);
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentPage = page;
+            renderCurrentPage();
+            logList.scrollTop = 0;
+        }
+
+        function jumpToPage() {
+            const input = document.getElementById('pageJumpInput');
+            const page = parseInt(input.value);
+            if (!isNaN(page)) {
+                goToPage(page);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.level;
+                currentPage = 1;
+                applyFilter();
+            });
+        });
+
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                searchKeyword = searchInput.value;
+                currentPage = 1;
+                applyFilter();
+            }, 300);
+        });
+
+        exportBtn.addEventListener('click', function() {
+            let content = '时间\t级别\t线程\t类名\t消息\n';
+            filteredLogs.forEach(log => {
+                content += `${log.time}\t${log.level}\t${log.thread}\t${log.className}\t${log.message}\n`;
+            });
+            
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'log_analysis_result.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
