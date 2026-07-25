@@ -1,3 +1,5 @@
+<img width="3762" height="1741" alt="image" src="https://github.com/user-attachments/assets/8549df9f-cb35-4d33-981b-ffe33387120c" />
+
 # Log Analyzer 日志分析工具
 一款纯前端离线日志解析可视化工具，开箱即用，无需后端、无需部署，本地加载 `.log`/`.txt` 日志文件，支持多维度统计、图表可视化、Trace链路追踪、异常堆栈聚合。
 
