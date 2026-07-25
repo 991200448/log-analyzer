@@ -1,4 +1,7 @@
 <img width="3762" height="1741" alt="image" src="https://github.com/user-attachments/assets/8549df9f-cb35-4d33-981b-ffe33387120c" />
+<img width="3674" height="1744" alt="image" src="https://github.com/user-attachments/assets/d39b18ec-f288-4598-837a-2a5b76872c75" />
+<img width="3569" height="1699" alt="image" src="https://github.com/user-attachments/assets/7d15e09d-c19c-4c1a-a692-bec70a958d9a" />
+<img width="3721" height="1748" alt="image" src="https://github.com/user-attachments/assets/fdf51aa7-776f-4068-9524-0ef8995dcd52" />
 
 # Log Analyzer 日志分析工具
 一款纯前端离线日志解析可视化工具，开箱即用，无需后端、无需部署，本地加载 `.log`/`.txt` 日志文件，支持多维度统计、图表可视化、Trace链路追踪、异常堆栈聚合。
