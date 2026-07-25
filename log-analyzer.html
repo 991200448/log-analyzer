@@ -316,6 +316,9 @@
         .filter-btn.active {
             transform: scale(1.05);
         }
+        .filter-btn.active span {
+            color: inherit !important;
+        }
         .filter-btn.debug { border-color: #2196F3; }
         .filter-btn.debug.active { background: #2196F3; color: #fff; }
         .filter-btn.info { border-color: #4CAF50; }
@@ -673,6 +676,90 @@
             background: var(--scrollbar-thumb);
             border-radius: 5px;
         }
+        
+        /* 标签页导航 */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border-input);
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 10px 24px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            color: var(--text-accent);
+        }
+        .tab-btn.active {
+            color: var(--text-accent);
+            border-bottom-color: var(--text-accent);
+        }
+        
+        /* 看板区域 */
+        .dashboard-section {
+            display: none;
+        }
+        .dashboard-section.show {
+            display: block;
+        }
+        .chart-wrapper {
+            position: relative;
+            background: var(--bg-raw);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .chart-wrapper canvas {
+            display: block;
+            width: 100%;
+            cursor: pointer;
+            background: var(--bg-raw);
+        }
+        .chart-legend {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-align: center;
+        }
+        
+        /* 悬浮提示框 */
+        .chart-tooltip {
+            position: fixed;
+            display: none;
+            background: var(--bg-modal);
+            border: 1px solid var(--text-accent);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text);
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            max-width: 420px;
+            line-height: 1.6;
+        }
+        .chart-tooltip .tt-count {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-accent);
+        }
+        .chart-tooltip .tt-label {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .chart-tooltip .tt-time {
+            color: #f44336;
+        }
     </style>
 </head>
 <body data-theme="dark">
@@ -711,50 +798,35 @@
             </div>
         </div>
         
-        <div class="stats-section" id="statsSection" style="display: none;">
-            <div class="stat-card debug">
-                <div class="stat-number" id="debugCount">0</div>
-                <div class="stat-label">DEBUG</div>
-            </div>
-            <div class="stat-card info">
-                <div class="stat-number" id="infoCount">0</div>
-                <div class="stat-label">INFO</div>
-            </div>
-            <div class="stat-card warn">
-                <div class="stat-number" id="warnCount">0</div>
-                <div class="stat-label">WARN</div>
-            </div>
-            <div class="stat-card error">
-                <div class="stat-number" id="errorCount">0</div>
-                <div class="stat-label">ERROR</div>
-            </div>
-            <div class="stat-card duplicate">
-                <div class="stat-number" id="duplicateCount">0</div>
-                <div class="stat-label">重复日志组</div>
-            </div>
+        <div class="tab-bar" id="tabBar" style="display: none;">
+            <button class="tab-btn active" data-tab="results">解析结果</button>
+            <button class="tab-btn" data-tab="dashboard">折线图</button>
+            <button class="tab-btn" data-tab="pie">饼状图</button>
+            <button class="tab-btn" data-tab="trend">时间趋势</button>
+            <button class="tab-btn" data-tab="trace">TraceId 追踪</button>
+            <button class="tab-btn" data-tab="thread">线程耗时</button>
+            <button class="tab-btn" data-tab="exception">异常聚合</button>
         </div>
         
-        <div class="filter-section" id="filterSection" style="display: none;">
-            <div class="filter-title">日志级别筛选</div>
-            <div class="filter-buttons">
-                <button class="filter-btn all active" data-level="all">全部</button>
-                <button class="filter-btn debug" data-level="DEBUG">DEBUG</button>
-                <button class="filter-btn info" data-level="INFO">INFO</button>
-                <button class="filter-btn warn" data-level="WARN">WARN</button>
-                <button class="filter-btn error" data-level="ERROR">ERROR</button>
-                <button class="filter-btn duplicate" data-level="DUPLICATE">重复日志</button>
-            </div>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="搜索日志内容...">
-            </div>
-        </div>
-        
-        <div class="results-section">
+        <div class="results-section" id="resultsPanel">
             <div class="results-header">
                 <span class="results-title">解析结果</span>
                 <div>
                     <span class="results-count" id="resultsCount">共 0 条</span>
-                    <button class="export-btn" id="exportBtn" style="display: none;">导出结果</button>
+                    <span style="color:var(--text-accent);font-size:11px;margin-left:8px;">Ctrl + 点击跳转</span>
+                </div>
+            </div>
+            <div class="filter-section" id="filterSection" style="display: none;margin-bottom:12px;padding:14px 16px;">
+                <div class="filter-title" style="margin-bottom:10px;font-size:14px;">日志级别筛选</div>
+                <div class="filter-buttons">
+                    <button class="filter-btn all active" data-level="all" style="padding:6px 14px;font-size:13px;">全部 <span id="allFilterCount" style="color:var(--text-accent);font-size:11px;"></span></button>
+                    <button class="filter-btn debug" data-level="DEBUG" style="padding:6px 14px;font-size:13px;">DEBUG <span id="debugFilterCount" style="color:#2196F3;font-size:11px;"></span></button>
+                    <button class="filter-btn info" data-level="INFO" style="padding:6px 14px;font-size:13px;">INFO <span id="infoFilterCount" style="color:#4CAF50;font-size:11px;"></span></button>
+                    <button class="filter-btn warn" data-level="WARN" style="padding:6px 14px;font-size:13px;">WARN <span id="warnFilterCount" style="color:#FF9800;font-size:11px;"></span></button>
+                    <button class="filter-btn error" data-level="ERROR" style="padding:6px 14px;font-size:13px;">ERROR <span id="errorFilterCount" style="color:#f44336;font-size:11px;"></span></button>
+                </div>
+                <div class="search-box" style="margin-top:10px;">
+                    <input type="text" id="searchInput" placeholder="搜索日志内容..." style="padding:8px 12px;font-size:13px;">
                 </div>
             </div>
             <div class="log-list" id="logList">
@@ -762,6 +834,51 @@
             </div>
             <div class="pagination" id="pagination" style="display: none;"></div>
         </div>
+        
+        <div class="dashboard-section" id="dashboardPanel">
+            <div class="chart-wrapper">
+                <canvas id="errorChart"></canvas>
+            </div>
+            <div class="chart-wrapper" id="pieChartWrapper" style="display: none;">
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-wrapper" id="trendChartWrapper" style="display: none;">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="chart-wrapper" id="tracePanel" style="display: none;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative;">
+                    <label style="color:var(--text-secondary);font-size:13px;white-space:nowrap;">选择 TraceId:</label>
+                    <div style="position:relative;flex:1;max-width:460px;">
+                        <input type="text" id="traceIdInput" placeholder="搜索 TraceId..." autocomplete="off"
+                               style="width:100%;padding:8px 32px 8px 12px;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-modal);color:var(--text);font-size:13px;">
+                        <span id="traceIdClear" title="清空" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;user-select:none;">&times;</span>
+                        <div id="traceIdDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;background:var(--bg-modal);border:1px solid var(--border-input);border-radius:6px;z-index:100;margin-top:2px;box-shadow:0 4px 16px rgba(0,0,0,0.3);"></div>
+                    </div>
+                    <span id="traceCount" style="color:var(--text-secondary);font-size:13px;white-space:nowrap;"></span>
+                </div>
+                <div id="traceLogList" style="max-height:500px;overflow-y:auto;font-size:12px;font-family:monospace;line-height:1.8;color:var(--text);"></div>
+            </div>
+            <div class="chart-wrapper" id="threadPanel" style="display: none;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative;">
+                    <label style="color:var(--text-secondary);font-size:13px;white-space:nowrap;">搜索 TraceId:</label>
+                    <div style="position:relative;flex:1;max-width:460px;">
+                        <input type="text" id="threadTraceIdInput" placeholder="输入过滤 TraceId（留空显示全部）..." autocomplete="off"
+                               style="width:100%;padding:8px 32px 8px 12px;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-modal);color:var(--text);font-size:13px;">
+                        <span id="threadTraceIdClear" title="清空" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;user-select:none;">&times;</span>
+                        <div id="threadTraceIdDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;background:var(--bg-modal);border:1px solid var(--border-input);border-radius:6px;z-index:100;margin-top:2px;box-shadow:0 4px 16px rgba(0,0,0,0.3);"></div>
+                    </div>
+                    <span id="threadCount" style="color:var(--text-secondary);font-size:13px;white-space:nowrap;"></span>
+                </div>
+                <div id="threadStatList" style="max-height:500px;overflow-y:auto;font-size:12px;font-family:monospace;color:var(--text);"></div>
+            </div>
+            <div class="chart-wrapper" id="exceptionPanel" style="display: none;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <span id="exceptionCount" style="color:var(--text-secondary);font-size:13px;"></span>
+                </div>
+                <div id="exceptionList" style="max-height:500px;overflow-y:auto;font-size:12px;font-family:monospace;color:var(--text);"></div>
+            </div>
+        </div>
+        <div class="chart-tooltip" id="chartTooltip"></div>
     </div>
 
     <div class="modal" id="rawModal">
@@ -801,7 +918,6 @@
         const parseBtn = document.getElementById('parseBtn');
         const viewRawBtn = document.getElementById('viewRawBtn');
         const logList = document.getElementById('logList');
-        const statsSection = document.getElementById('statsSection');
         const filterSection = document.getElementById('filterSection');
         const rawModal = document.getElementById('rawModal');
         const closeModal = document.getElementById('closeModal');
@@ -812,10 +928,32 @@
         const searchPrevBtn = document.getElementById('searchPrevBtn');
         const searchNextBtn = document.getElementById('searchNextBtn');
         const searchInput = document.getElementById('searchInput');
-        const exportBtn = document.getElementById('exportBtn');
         const pagination = document.getElementById('pagination');
         const clearTimeBtn = document.getElementById('clearTimeBtn');
         const themeToggle = document.getElementById('themeToggle');
+        const tabBar = document.getElementById('tabBar');
+        const dashboardPanel = document.getElementById('dashboardPanel');
+        const errorChart = document.getElementById('errorChart');
+        const pieChart = document.getElementById('pieChart');
+        const pieChartWrapper = document.getElementById('pieChartWrapper');
+        const trendChart = document.getElementById('trendChart');
+        const trendChartWrapper = document.getElementById('trendChartWrapper');
+        const tracePanel = document.getElementById('tracePanel');
+        const traceIdInput = document.getElementById('traceIdInput');
+        const traceIdDropdown = document.getElementById('traceIdDropdown');
+        const traceIdClearBtn = document.getElementById('traceIdClear');
+        const traceLogList = document.getElementById('traceLogList');
+        const traceCount = document.getElementById('traceCount');
+        const threadPanel = document.getElementById('threadPanel');
+        const threadTraceIdInput = document.getElementById('threadTraceIdInput');
+        const threadTraceIdDropdown = document.getElementById('threadTraceIdDropdown');
+        const threadTraceIdClearBtn = document.getElementById('threadTraceIdClear');
+        const threadCount = document.getElementById('threadCount');
+        const threadStatList = document.getElementById('threadStatList');
+        const exceptionPanel = document.getElementById('exceptionPanel');
+        const exceptionCount = document.getElementById('exceptionCount');
+        const exceptionList = document.getElementById('exceptionList');
+        const chartTooltip = document.getElementById('chartTooltip');
 
         const savedTheme = localStorage.getItem('logAnalyzerTheme') || 'dark';
         document.body.setAttribute('data-theme', savedTheme);
@@ -929,9 +1067,52 @@
             const file = fileInput.files[0];
             if (!file) return;
             
+            // 清空之前的全部数据
+            allLogs = [];
+            errorChartData = [];
+            timeTrendData = [];
+            traceIdMap = {};
+            traceIdInput.value = '';
+            traceIdDropdown.innerHTML = '';
+            traceIdDropdown.style.display = 'none';
+            traceLogList.innerHTML = '';
+            traceCount.textContent = '';
+            threadStatsCache = [];
+            threadStatList.innerHTML = '';
+            threadCount.textContent = '';
+            threadTraceIdInput.value = '';
+            threadTraceIdClearBtn.style.display = 'none';
+            exceptionList.innerHTML = '';
+            exceptionCount.textContent = '';
+            // 清除画布
+            [errorChart, pieChart, trendChart].forEach(c => {
+                const ctx = c.getContext('2d');
+                ctx.clearRect(0, 0, c.width, c.height);
+            });
+            filteredLogs = [];
+            filteredLogs = [];
+            duplicateGroups = {};
+            currentFilter = 'all';
+            searchKeyword = '';
+            currentPage = 1;
+            
             logList.innerHTML = '<div class="loading">正在解析... <span id="parseProgress">0%</span></div>';
-            statsSection.style.display = 'none';
             filterSection.style.display = 'none';
+            tabBar.style.display = 'none';
+            dashboardPanel.classList.remove('show');
+            pieChartWrapper.style.display = 'none';
+            trendChartWrapper.style.display = 'none';
+            tracePanel.style.display = 'none';
+            threadPanel.style.display = 'none';
+            exceptionPanel.style.display = 'none';
+            document.getElementById('resultsPanel').style.display = '';
+            tabBar.querySelector('.tab-btn[data-tab="results"]').classList.add('active');
+            tabBar.querySelector('.tab-btn[data-tab="dashboard"]').classList.remove('active');
+            tabBar.querySelector('.tab-btn[data-tab="pie"]').classList.remove('active');
+            tabBar.querySelector('.tab-btn[data-tab="trend"]').classList.remove('active');
+            tabBar.querySelector('.tab-btn[data-tab="trace"]').classList.remove('active');
+            tabBar.querySelector('.tab-btn[data-tab="thread"]').classList.remove('active');
+            tabBar.querySelector('.tab-btn[data-tab="exception"]').classList.remove('active');
             
             parseFileWithWorker(file);
         });
@@ -941,6 +1122,8 @@
             const filterTime = startTimeValue ? new Date(startTimeValue) : null;
             
             allLogs = [];
+            rawLinesCache = [];
+            rawTotalLines = 0;
             
             const CHUNK_SIZE = 1024 * 1024;
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -990,6 +1173,10 @@
                     leftover = '';
                 }
                 
+                // 缓存原始行，后续查看原文无需重复读取文件
+                rawLinesCache = rawLinesCache.concat(lines);
+                rawTotalLines = rawLinesCache.length;
+                
                 if (lines.length > 0) {
                     parseWorker.postMessage({
                         lines: lines,
@@ -1023,9 +1210,13 @@
             currentPage = 1;
             applyFilter();
             
-            statsSection.style.display = 'grid';
             filterSection.style.display = 'block';
-            exportBtn.style.display = 'inline-block';
+            tabBar.style.display = 'flex';
+            buildErrorChartData();
+            buildTimeTrendData();
+            drawErrorChart();
+            traceIdMap = {};
+            buildTraceIdSelect();
         }
 
         viewRawBtn.addEventListener('click', function() {
@@ -1036,8 +1227,16 @@
         });
 
         async function loadRawLog(file) {
-            rawInfo.textContent = '正在加载...';
             rawModal.classList.add('show');
+            
+            // 如果解析时已缓存原始行，直接使用缓存，无需重复读取文件
+            if (rawLinesCache.length > 0) {
+                rawInfo.textContent = `已缓存 ${rawTotalLines} 行`;
+                showRawLogFromCache();
+                return Promise.resolve();
+            }
+            
+            rawInfo.textContent = '正在加载...';
             rawLinesCache = [];
             rawTotalLines = 0;
             
@@ -1078,8 +1277,9 @@
             while (currentChunk < totalChunks) {
                 await readNextChunk();
             }
-            
+
             showRawLogFromCache();
+            return Promise.resolve();
         }
 
         function showRawLogFromCache() {
@@ -1106,36 +1306,90 @@
                 }
             }
             
-            const displayLines = rawLinesCache.slice(startIndex, startIndex + 5000);
-            const totalDisplayLines = rawLinesCache.length - startIndex;
+            allDisplayLines = rawLinesCache.slice(startIndex);
+            const totalDisplayLines = allDisplayLines.length;
+            originalRawContent = allDisplayLines.join('\n');
             
-            rawInfo.textContent = `起始时间: ${startTimeValue || '无'} | 显示行数: ${displayLines.length} / ${totalDisplayLines}${totalDisplayLines > 5000 ? ' (仅显示前5000行)' : ''}`;
-            originalRawContent = displayLines.join('\n');
-            rawContent.innerHTML = escapeHtml(originalRawContent);
+            rawInfo.textContent = `起始时间: ${startTimeValue || '无'} | 显示行数: ${totalDisplayLines}`;
             rawSearchInput.value = '';
             searchCount.textContent = '';
             searchMatches = [];
             currentMatchIndex = -1;
+            currentSearchKeyword = '';
+            
+            // 分块渲染首屏
+            renderWindow(0, Math.min(RENDER_CHUNK, allDisplayLines.length), null);
         }
-
-        closeModal.addEventListener('click', function() {
-            rawModal.classList.remove('show');
-        });
-
-        rawModal.addEventListener('click', function(e) {
-            if (e.target === rawModal) {
-                rawModal.classList.remove('show');
-            }
-        });
 
         let searchMatches = [];
         let currentMatchIndex = -1;
         let originalRawContent = '';
+        let allDisplayLines = [];
+        let renderedEndLine = 0;
+        let currentSearchKeyword = '';
+        const RENDER_CHUNK = 30000;
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        // 当前渲染窗口的起始行和结束行
+        let windowStartLine = 0;
+
+        function renderWindow(startLine, endLine, keyword) {
+            windowStartLine = startLine;
+            renderedEndLine = 0;
+            rawContent.innerHTML = '';
+            currentSearchKeyword = keyword || '';
+            
+            const chunk = allDisplayLines.slice(startLine, endLine);
+            if (chunk.length === 0) return;
+            
+            const chunkText = chunk.join('\n');
+            rawContent.innerHTML = keyword
+                ? highlightSearch(chunkText, keyword)
+                : escapeHtml(chunkText);
+            renderedEndLine = endLine;
+        }
+
+        // 追加渲染下一块
+        function renderNextChunk() {
+            if (renderedEndLine >= allDisplayLines.length) return;
+            const endLine = Math.min(renderedEndLine + RENDER_CHUNK, allDisplayLines.length);
+            const chunk = allDisplayLines.slice(renderedEndLine, endLine);
+            const chunkText = chunk.join('\n');
+            rawContent.innerHTML += '\n' + (currentSearchKeyword
+                ? highlightSearch(chunkText, currentSearchKeyword)
+                : escapeHtml(chunkText));
+            renderedEndLine = endLine;
+        }
+
+        // 滚动监听：触底自动加载
+        function setupRawScrollListener() {
+            const modalBody = rawContent.parentElement;
+            modalBody.addEventListener('scroll', function() {
+                if (renderedEndLine >= allDisplayLines.length) return;
+                const scrollBottom = modalBody.scrollHeight - modalBody.scrollTop - modalBody.clientHeight;
+                if (scrollBottom < 2000) {
+                    renderNextChunk();
+                }
+            });
+        }
+        setupRawScrollListener();
+
+        // 根据 originalRawContent 中的字符位置反查 allDisplayLines 中的行号
+        function lineForCharPos(charPos) {
+            let accumulated = 0;
+            for (let i = 0; i < allDisplayLines.length; i++) {
+                accumulated += allDisplayLines[i].length + 1;
+                if (charPos < accumulated) return i;
+            }
+            return allDisplayLines.length - 1;
+        }
+
+        // 计算 searchMatches 中落在窗口 [winStart, winEnd) 行范围内的第一个匹配索引
+        function firstMatchInWindow(winStart, winEnd) {
+            for (let i = 0; i < searchMatches.length; i++) {
+                const line = lineForCharPos(searchMatches[i]);
+                if (line >= winStart && line < winEnd) return i;
+            }
+            return -1;
         }
 
         function highlightSearch(text, keyword) {
@@ -1151,38 +1405,98 @@
             currentMatchIndex = -1;
             
             if (!keyword) {
-                rawContent.innerHTML = escapeHtml(originalRawContent);
+                currentSearchKeyword = '';
+                renderWindow(0, Math.min(RENDER_CHUNK, allDisplayLines.length), null);
                 searchCount.textContent = '';
                 return;
             }
             
+            // 全文本搜索（只做正则匹配，不渲染DOM）
             const regex = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
             let match;
             while ((match = regex.exec(originalRawContent)) !== null) {
                 searchMatches.push(match.index);
             }
             
-            rawContent.innerHTML = highlightSearch(originalRawContent, keyword);
-            
             if (searchMatches.length > 0) {
-                searchCount.textContent = `1/${searchMatches.length}`;
-                currentMatchIndex = 0;
-                scrollToMatch(0);
+                currentSearchKeyword = keyword;
+                
+                // 以第一个匹配为中心渲染窗口
+                const firstMatchLine = lineForCharPos(searchMatches[0]);
+                const halfChunk = Math.floor(RENDER_CHUNK / 2);
+                const winStart = Math.max(0, firstMatchLine - halfChunk);
+                const winEnd = Math.min(winStart + RENDER_CHUNK, allDisplayLines.length);
+                renderWindow(winStart, winEnd, keyword);
+                
+                // 窗口内第一个匹配对应的 highlight 索引
+                const visibleIdx = firstMatchInWindow(winStart, winEnd);
+                if (visibleIdx >= 0) {
+                    currentMatchIndex = visibleIdx;
+                    searchCount.textContent = `1/${searchMatches.length}`;
+                    scrollToHighlight(0);
+                }
             } else {
+                currentSearchKeyword = '';
                 searchCount.textContent = '0/0';
             }
         }
 
-        function scrollToMatch(index) {
-            if (index < 0 || index >= searchMatches.length) return;
-            
+        function scrollToHighlight(visibleIdx) {
             const highlights = rawContent.querySelectorAll('.highlight');
             highlights.forEach(h => h.style.background = '');
-            
-            if (highlights[index]) {
-                highlights[index].style.background = '#ff9800';
-                highlights[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (highlights[visibleIdx]) {
+                highlights[visibleIdx].style.background = '#ff9800';
+                highlights[visibleIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+        }
+
+        function navigateToMatch(targetGlobalIndex) {
+            if (searchMatches.length === 0) return;
+            const matchPos = searchMatches[targetGlobalIndex];
+            const matchLine = lineForCharPos(matchPos);
+            
+            // 如果目标不在当前窗口内，重新渲染窗口
+            if (matchLine < windowStartLine || matchLine >= renderedEndLine) {
+                const halfChunk = Math.floor(RENDER_CHUNK / 2);
+                const winStart = Math.max(0, matchLine - halfChunk);
+                const winEnd = Math.min(winStart + RENDER_CHUNK, allDisplayLines.length);
+                renderWindow(winStart, winEnd, currentSearchKeyword);
+            }
+            
+            // 找到窗口内的 highlight 索引
+            const visibleIdx = firstMatchInWindow(windowStartLine, renderedEndLine);
+            if (visibleIdx < 0) return;
+            
+            // 计算窗口内到目标匹配的偏移
+            let countInWindow = 0;
+            for (let i = visibleIdx; i <= targetGlobalIndex && i < searchMatches.length; i++) {
+                const line = lineForCharPos(searchMatches[i]);
+                if (line >= windowStartLine && line < renderedEndLine) {
+                    if (i === targetGlobalIndex) {
+                        currentMatchIndex = targetGlobalIndex;
+                        searchCount.textContent = `${targetGlobalIndex + 1}/${searchMatches.length}`;
+                        scrollToHighlight(countInWindow);
+                        return;
+                    }
+                    countInWindow++;
+                }
+            }
+        }
+
+        closeModal.addEventListener('click', function() {
+            rawModal.classList.remove('show');
+        });
+
+        rawModal.addEventListener('click', function(e) {
+            if (e.target === rawModal) {
+                rawModal.classList.remove('show');
+            }
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         rawSearchInput.addEventListener('input', performSearch);
@@ -1199,16 +1513,14 @@
 
         searchPrevBtn.addEventListener('click', function() {
             if (searchMatches.length === 0) return;
-            currentMatchIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
-            searchCount.textContent = `${currentMatchIndex + 1}/${searchMatches.length}`;
-            scrollToMatch(currentMatchIndex);
+            const prevIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+            navigateToMatch(prevIndex);
         });
 
         searchNextBtn.addEventListener('click', function() {
             if (searchMatches.length === 0) return;
-            currentMatchIndex = (currentMatchIndex + 1) % searchMatches.length;
-            searchCount.textContent = `${currentMatchIndex + 1}/${searchMatches.length}`;
-            scrollToMatch(currentMatchIndex);
+            const nextIndex = (currentMatchIndex + 1) % searchMatches.length;
+            navigateToMatch(nextIndex);
         });
 
         function findDuplicates() {
@@ -1245,11 +1557,13 @@
                 }
             });
 
-            document.getElementById('debugCount').textContent = counts.DEBUG;
-            document.getElementById('infoCount').textContent = counts.INFO;
-            document.getElementById('warnCount').textContent = counts.WARN;
-            document.getElementById('errorCount').textContent = counts.ERROR;
-            document.getElementById('duplicateCount').textContent = Object.keys(duplicateGroups).length;
+            const total = allLogs.length;
+            document.getElementById('allFilterCount').textContent = total;
+            document.getElementById('debugFilterCount').textContent = counts.DEBUG;
+            document.getElementById('infoFilterCount').textContent = counts.INFO;
+            document.getElementById('warnFilterCount').textContent = counts.WARN;
+            document.getElementById('errorFilterCount').textContent = counts.ERROR;
+            document.getElementById('resultsCount').textContent = `共 ${total} 条`;
         }
 
         function applyFilter() {
@@ -1298,12 +1612,13 @@
             }
 
             filteredLogs = baseLogs;
+            filteredLogs.sort((a, b) => b.count - a.count);
             renderCurrentPage();
         }
 
         function renderCurrentPage() {
             const totalPages = Math.ceil(filteredLogs.length / pageSize);
-            
+
             if (filteredLogs.length === 0) {
                 logList.innerHTML = '<div class="no-data">没有匹配的日志</div>';
                 document.getElementById('resultsCount').textContent = '共 0 条';
@@ -1316,12 +1631,15 @@
             const pageLogs = filteredLogs.slice(startIndex, endIndex);
 
             let html = '';
-            pageLogs.forEach(log => {
+            pageLogs.forEach((log, index) => {
                 const levelClass = log.level.toLowerCase();
                 const hasMultiple = log.count > 1;
-                
+                const logTime = hasMultiple ? log.times[0] : log.time;
+                // 使用类名+行号+消息作为搜索关键词，确保高亮范围覆盖到消息详情
+                const searchKeyword = `${log.className}[${log.lineNum}] - ${log.message}`;
+
                 html += `
-                    <div class="log-item ${hasMultiple ? 'duplicate' : levelClass}">
+                    <div class="log-item ${hasMultiple ? 'duplicate' : levelClass}" data-time="${logTime}" data-keyword="${escapeHtml(searchKeyword)}" data-traceid="${log.traceId}" style="cursor: pointer;" title="点击查看原文">
                         <div class="log-header">
                             <div>
                                 <span class="log-level ${levelClass}">${log.level}</span>
@@ -1329,7 +1647,6 @@
                             </div>
                             <span class="log-time">${hasMultiple ? `${log.times[0]} ~ ${log.times[log.times.length - 1]}` : log.time}</span>
                         </div>
-                        ${hasMultiple && log.traceIds ? `<div class="log-traceId">TraceId: ${log.traceIds.slice(0, 3).join(', ')}${log.traceIds.length > 3 ? '...' : ''}</div>` : `<div class="log-traceId">TraceId: ${log.traceId}</div>`}
                         <div class="log-thread">线程: ${hasMultiple && log.threads ? `${log.threads.length} 个线程` : log.thread}</div>
                         <div class="log-class">${log.className}[${log.lineNum}]</div>
                         <div class="log-message">${escapeHtml(log.message)}</div>
@@ -1339,8 +1656,48 @@
 
             logList.innerHTML = html;
             document.getElementById('resultsCount').textContent = `共 ${filteredLogs.length} 条`;
-            
+
+            // 添加点击事件监听
+            logList.querySelectorAll('.log-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    if (!e.ctrlKey && !e.metaKey) return;
+                    const logTime = this.getAttribute('data-time');
+                    const keyword = this.getAttribute('data-keyword');
+                    const traceId = this.getAttribute('data-traceid');
+                    handleLogItemClick(logTime, keyword, traceId);
+                });
+            });
+
             renderPagination(totalPages);
+        }
+
+        function handleLogItemClick(logTime, keyword, traceId) {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            // 1. 将日期填到起始时间输入框
+            if (logTime) {
+                // 将日志时间格式转换为 datetime-local 格式 (YYYY-MM-DDTHH:mm)
+                const dateMatch = logTime.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+                if (dateMatch) {
+                    const dateTimeLocal = `${dateMatch[1]}T${dateMatch[2]}`;
+                    document.getElementById('startTime').value = dateTimeLocal;
+                }
+            }
+
+            // 2. 打开查看原文模态框并加载内容
+            loadRawLog(file).then(() => {
+                // 3. 优先使用类名+行号搜索，如果没有结果则使用 traceId 搜索
+                if (keyword) {
+                    rawSearchInput.value = keyword;
+                    performSearch();
+                    // 如果类名+行号没有搜索结果，尝试使用 traceId
+                    if (searchMatches.length === 0 && traceId) {
+                        rawSearchInput.value = traceId;
+                        performSearch();
+                    }
+                }
+            });
         }
 
         function renderPagination(totalPages) {
@@ -1446,20 +1803,1206 @@
             }, 300);
         });
 
-        exportBtn.addEventListener('click', function() {
-            let content = '时间\t级别\t线程\t类名\t消息\n';
-            filteredLogs.forEach(log => {
-                content += `${log.time}\t${log.level}\t${log.thread}\t${log.className}\t${log.message}\n`;
+        // ========== 标签页切换 ==========
+        tabBar.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                tabBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const tab = this.dataset.tab;
+                if (tab === 'results') {
+                    document.getElementById('resultsPanel').style.display = '';
+                    dashboardPanel.classList.remove('show');
+                } else if (tab === 'dashboard') {
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    dashboardPanel.classList.add('show');
+                    hideAllCharts();
+                    document.getElementById('errorChart').parentElement.style.display = '';
+                    requestAnimationFrame(function() { drawErrorChart(); });
+                } else if (tab === 'pie') {
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    dashboardPanel.classList.add('show');
+                    hideAllCharts();
+                    pieChartWrapper.style.display = '';
+                    requestAnimationFrame(function() { drawPieChart(); });
+                } else if (tab === 'trend') {
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    dashboardPanel.classList.add('show');
+                    hideAllCharts();
+                    trendChartWrapper.style.display = '';
+                    requestAnimationFrame(function() { drawTrendChart(); });
+                } else if (tab === 'trace') {
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    dashboardPanel.classList.add('show');
+                    hideAllCharts();
+                    tracePanel.style.display = '';
+                    buildTraceIdSelect();
+                } else if (tab === 'thread') {
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    dashboardPanel.classList.add('show');
+                    hideAllCharts();
+                    threadPanel.style.display = '';
+                    buildThreadStats();
+                } else if (tab === 'exception') {
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    dashboardPanel.classList.add('show');
+                    hideAllCharts();
+                    exceptionPanel.style.display = '';
+                    buildExceptionStats();
+                }
             });
-            
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'log_analysis_result.txt';
-            a.click();
-            URL.revokeObjectURL(url);
         });
+
+        function hideAllCharts() {
+            document.getElementById('errorChart').parentElement.style.display = 'none';
+            pieChartWrapper.style.display = 'none';
+            trendChartWrapper.style.display = 'none';
+            tracePanel.style.display = 'none';
+            threadPanel.style.display = 'none';
+            exceptionPanel.style.display = 'none';
+        }
+
+        // ========== ERROR 看板数据 ==========
+        let errorChartData = [];
+
+        function buildErrorChartData() {
+            const errorMap = {};
+            allLogs.forEach(log => {
+                if (log.level !== 'ERROR') return;
+                const key = `${log.className}|${log.lineNum}|${log.message}`;
+                if (!errorMap[key]) {
+                    errorMap[key] = {
+                        className: log.className,
+                        lineNum: log.lineNum,
+                        message: log.message,
+                        traceId: log.traceId,
+                        thread: log.thread,
+                        count: 0,
+                        times: [],
+                        traceIds: [],
+                        threads: []
+                    };
+                }
+                errorMap[key].count++;
+                errorMap[key].times.push(log.time);
+                errorMap[key].traceIds.push(log.traceId);
+                errorMap[key].threads.push(log.thread);
+            });
+
+            errorChartData = Object.values(errorMap).map(item => {
+                item.times.sort();
+                item.timeRange = item.times[0] + ' ~ ' + item.times[item.times.length - 1];
+                return item;
+            });
+
+            // 按出现次数由多到少排序
+            errorChartData.sort((a, b) => b.count - a.count);
+        }
+
+        // ========== Canvas 折线图 ==========
+        let hoveredPointIndex = -1;
+        const chartPadding = { top: 20, right: 30, bottom: 90, left: 60 };
+
+        function shortLabel(item) {
+            const parts = item.className.split('.');
+            const short = parts[parts.length - 1] || item.className;
+            if (short.length > 18) return short.substring(0, 16) + '..';
+            return short;
+        }
+
+        function drawErrorChart() {
+            if (!errorChart || errorChartData.length === 0) return;
+
+            const canvas = errorChart;
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            if (rect.width <= 0) return; // 容器不可见时跳过
+
+            const dpr = window.devicePixelRatio || 1;
+
+            canvas.style.width = '100%';
+            canvas.style.height = '420px';
+            const w = rect.width - 32;
+            const h = 420;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#aaa' : '#666';
+            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+            const lineColor = '#2196f3';
+            const pointColor = '#2196f3';
+            const pointHoverColor = '#ff9800';
+            const bgColor = isDark ? '#0d0d1a' : '#f8f9fa';
+
+            canvas.style.background = bgColor;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, w, h);
+
+            const plotW = w - chartPadding.left - chartPadding.right;
+            const plotH = h - chartPadding.top - chartPadding.bottom;
+            const maxCount = Math.max(...errorChartData.map(d => d.count), 1);
+            const yMax = maxCount + Math.max(1, Math.ceil(maxCount * 0.15));
+            const n = errorChartData.length;
+
+            // Y轴刻度
+            ctx.fillStyle = textColor;
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'right';
+            const ySteps = 5;
+            for (let i = 0; i <= ySteps; i++) {
+                const val = Math.round((yMax / ySteps) * i);
+                const y = chartPadding.top + plotH - (plotH / ySteps) * i;
+                ctx.fillText(val, chartPadding.left - 8, y + 4);
+                if (i > 0) {
+                    ctx.strokeStyle = gridColor;
+                    ctx.beginPath();
+                    ctx.moveTo(chartPadding.left, y);
+                    ctx.lineTo(w - chartPadding.right, y);
+                    ctx.stroke();
+                }
+            }
+
+            // 数据点坐标
+            const points = errorChartData.map((d, i) => {
+                const x = chartPadding.left + (n > 1 ? (plotW / (n - 1)) * i : plotW / 2);
+                const y = chartPadding.top + plotH - (d.count / yMax) * plotH;
+                return { x, y, index: i, data: d };
+            });
+
+            // 连线
+            if (n > 1) {
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < n; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.stroke();
+            }
+
+            // 数据点
+            points.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, i === hoveredPointIndex ? 8 : 5, 0, Math.PI * 2);
+                ctx.fillStyle = i === hoveredPointIndex ? pointHoverColor : pointColor;
+                ctx.fill();
+                ctx.strokeStyle = isDark ? '#1a1a2e' : '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            // 存储坐标供事件处理
+            canvas._points = points;
+            canvas._plotW = w;
+            canvas._plotH = h;
+        }
+
+        // ========== 鼠标事件 ==========
+        errorChart.addEventListener('mousemove', function(e) {
+            if (!errorChart._points) return;
+            const rect = errorChart.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            const points = errorChart._points;
+            let nearest = -1;
+            let minDist = Infinity;
+            for (let i = 0; i < points.length; i++) {
+                const dx = mx - points[i].x;
+                const dy = my - points[i].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDist && dist < 20) {
+                    minDist = dist;
+                    nearest = i;
+                }
+            }
+
+            if (nearest !== hoveredPointIndex) {
+                hoveredPointIndex = nearest;
+                drawErrorChart();
+            }
+
+            if (nearest >= 0) {
+                const d = errorChartData[nearest];
+                const parts = d.className.split('.');
+                const shortClass = parts.length > 2
+                    ? '..' + parts.slice(-2).join('.')
+                    : d.className;
+                chartTooltip.innerHTML = `
+                    <div class="tt-label">ERROR 重复 <span class="tt-count">${d.count}</span> 次</div>
+                    <div class="tt-time">${d.timeRange}</div>
+                    <div>线程: ${d.thread}</div>
+                    <div style="color:#aaa;margin-top:4px;">${shortClass}[${d.lineNum}]</div>
+                    <div style="margin-top:2px;">${escapeHtml(d.message.length > 80 ? d.message.substring(0, 80) + '...' : d.message)}</div>
+                    <div style="color:#2196f3;margin-top:6px;font-size:11px;">点击跳转日志详情</div>
+                `;
+                chartTooltip.style.display = 'block';
+                const tx = e.clientX + 16;
+                const ty = e.clientY - 10;
+                chartTooltip.style.left = Math.min(tx, window.innerWidth - 440) + 'px';
+                chartTooltip.style.top = Math.max(10, ty - chartTooltip.offsetHeight) + 'px';
+                errorChart.style.cursor = 'pointer';
+            } else {
+                chartTooltip.style.display = 'none';
+                errorChart.style.cursor = 'default';
+            }
+        });
+
+        errorChart.addEventListener('mouseleave', function() {
+            hoveredPointIndex = -1;
+            drawErrorChart();
+            chartTooltip.style.display = 'none';
+            errorChart.style.cursor = 'default';
+        });
+
+        errorChart.addEventListener('click', function(e) {
+            if (hoveredPointIndex < 0 || !errorChart._points) return;
+            const d = errorChartData[hoveredPointIndex];
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const searchKeyword = `${d.className}[${d.lineNum}] - ${d.message}`;
+            const logTime = d.times[0];
+            if (logTime) {
+                const dateMatch = logTime.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+                if (dateMatch) {
+                    document.getElementById('startTime').value = `${dateMatch[1]}T${dateMatch[2]}`;
+                }
+            }
+            loadRawLog(file).then(() => {
+                rawSearchInput.value = searchKeyword;
+                performSearch();
+                if (searchMatches.length === 0 && d.traceId) {
+                    rawSearchInput.value = d.traceId;
+                    performSearch();
+                }
+            });
+        });
+
+        window.addEventListener('resize', function() {
+            if (dashboardPanel.classList.contains('show')) {
+                if (pieChartWrapper.style.display !== 'none') {
+                    drawPieChart();
+                } else if (trendChartWrapper.style.display !== 'none') {
+                    drawTrendChart();
+                } else {
+                    drawErrorChart();
+                }
+            }
+        });
+
+        // ========== 时间趋势 ==========
+        let timeTrendData = [];
+        let trendHoveredIndex = -1;
+
+        function buildTimeTrendData() {
+            const buckets = {};
+            allLogs.forEach(log => {
+                if (log.level !== 'ERROR') return;
+                const hour = log.time.substring(0, 13);
+                if (!buckets[hour]) {
+                    buckets[hour] = { hour, count: 0, errors: [] };
+                }
+                buckets[hour].count++;
+                buckets[hour].errors.push({
+                    className: log.className,
+                    lineNum: log.lineNum,
+                    message: log.message,
+                    time: log.time,
+                    traceId: log.traceId,
+                    thread: log.thread
+                });
+            });
+
+            timeTrendData = Object.values(buckets).sort((a, b) => a.hour.localeCompare(b.hour));
+        }
+
+        function drawTrendChart() {
+            if (!trendChart || timeTrendData.length === 0) { buildTimeTrendData(); }
+            if (timeTrendData.length === 0) return;
+
+            const canvas = trendChart;
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            if (rect.width <= 0) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            canvas.style.width = '100%';
+            canvas.style.height = '400px';
+            const w = rect.width - 32;
+            const h = 400;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const bgColor = isDark ? '#0d0d1a' : '#f8f9fa';
+            canvas.style.background = bgColor;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, w, h);
+
+            const pad = { top: 20, right: 30, bottom: 60, left: 55 };
+            const plotW = w - pad.left - pad.right;
+            const plotH = h - pad.top - pad.bottom;
+            const maxCount = Math.max(...timeTrendData.map(d => d.count), 1);
+            const yMax = maxCount + Math.max(1, Math.ceil(maxCount * 0.15));
+            const n = timeTrendData.length;
+
+            // Y轴
+            const isDarkTheme = isDark;
+            ctx.fillStyle = isDarkTheme ? '#aaa' : '#666';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'right';
+            const ySteps = 5;
+            for (let i = 0; i <= ySteps; i++) {
+                const val = Math.round((yMax / ySteps) * i);
+                const y = pad.top + plotH - (plotH / ySteps) * i;
+                ctx.fillText(val, pad.left - 8, y + 4);
+                if (i > 0) {
+                    ctx.strokeStyle = isDarkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+                    ctx.beginPath();
+                    ctx.moveTo(pad.left, y);
+                    ctx.lineTo(w - pad.right, y);
+                    ctx.stroke();
+                }
+            }
+
+            // 数据点
+            const points = timeTrendData.map((d, i) => {
+                const x = pad.left + (n > 1 ? (plotW / (n - 1)) * i : plotW / 2);
+                const y = pad.top + plotH - (d.count / yMax) * plotH;
+                return { x, y, index: i, data: d };
+            });
+
+            // X轴
+            ctx.fillStyle = isDarkTheme ? '#aaa' : '#666';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            const labelStep = Math.max(1, Math.floor(n / 16));
+            for (let i = 0; i < n; i += labelStep) {
+                const label = timeTrendData[i].hour.substring(5, 13).replace(' ', '\\n');
+                const parts = label.split('\\n');
+                ctx.fillText(parts[0] || '', points[i].x, pad.top + plotH + 16);
+                if (parts[1]) ctx.fillText(parts[1], points[i].x, pad.top + plotH + 30);
+            }
+
+            // 渐变填充
+            const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+            grad.addColorStop(0, 'rgba(33,150,243,0.25)');
+            grad.addColorStop(1, 'rgba(33,150,243,0.01)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, pad.top + plotH);
+            points.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.lineTo(points[points.length - 1].x, pad.top + plotH);
+            ctx.closePath();
+            ctx.fill();
+
+            // 连线
+            if (n > 1) {
+                ctx.strokeStyle = '#2196f3';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+                ctx.stroke();
+            }
+
+            // 数据点
+            points.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, i === trendHoveredIndex ? 7 : 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = i === trendHoveredIndex ? '#ff9800' : '#2196f3';
+                ctx.fill();
+                ctx.strokeStyle = bgColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            canvas._trendPoints = points;
+            canvas._trendW = w;
+        }
+
+        trendChart.addEventListener('mousemove', function(e) {
+            if (!trendChart._trendPoints) return;
+            const rect = trendChart.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const points = trendChart._trendPoints;
+
+            let nearest = -1;
+            let minDist = Infinity;
+            for (let i = 0; i < points.length; i++) {
+                const dx = mx - points[i].x;
+                const dy = my - points[i].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDist && dist < 20) { minDist = dist; nearest = i; }
+            }
+
+            if (nearest !== trendHoveredIndex) {
+                trendHoveredIndex = nearest;
+                drawTrendChart();
+            }
+
+            if (nearest >= 0) {
+                const d = timeTrendData[nearest];
+                chartTooltip.innerHTML = `
+                    <div class="tt-label"><span class="tt-count">${d.count}</span> 次 ERROR</div>
+                    <div class="tt-time">${d.hour}:00 ~ ${d.hour}:59</div>
+                    <div style="color:#aaa;margin-top:4px;">共 ${d.errors.length} 种错误类型</div>
+                    <div style="color:#2196f3;margin-top:6px;font-size:11px;">点击查看该时段解析结果</div>
+                `;
+                chartTooltip.style.display = 'block';
+                chartTooltip.style.left = Math.min(e.clientX + 16, window.innerWidth - 440) + 'px';
+                chartTooltip.style.top = Math.max(10, e.clientY - 10 - chartTooltip.offsetHeight) + 'px';
+                trendChart.style.cursor = 'pointer';
+            } else {
+                chartTooltip.style.display = 'none';
+                trendChart.style.cursor = 'default';
+            }
+        });
+
+        trendChart.addEventListener('mouseleave', function() {
+            trendHoveredIndex = -1;
+            drawTrendChart();
+            chartTooltip.style.display = 'none';
+            trendChart.style.cursor = 'default';
+        });
+
+        trendChart.addEventListener('click', function() {
+            if (trendHoveredIndex < 0) return;
+            const d = timeTrendData[trendHoveredIndex];
+            document.getElementById('startTime').value = d.hour.substring(0, 10) + 'T' + d.hour.substring(11, 13) + ':00';
+            // 触发 ERROR 筛选按钮
+            document.querySelector('.filter-btn[data-level="ERROR"]').click();
+            // 切换到解析结果标签
+            tabBar.querySelector('.tab-btn[data-tab="results"]').click();
+        });
+
+        // ========== 饼状图 ==========
+        let pieHoveredIndex = -1;
+        let pieHoveredLegend = -1;
+        const PIE_COLORS = ['#2196f3', '#f44336', '#ff9800', '#4caf50', '#9c27b0', '#00bcd4',
+            '#e91e63', '#3f51b5', '#ffeb3b', '#795548', '#607d8b', '#cddc39', '#ff5722', '#8bc34a',
+            '#009688', '#673ab7', '#03a9f4', '#e040fb', '#7c4dff', '#00e676'];
+
+        function drawPieChart() {
+            if (!pieChart || errorChartData.length === 0) return;
+
+            const canvas = pieChart;
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            if (rect.width <= 0) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            canvas.style.width = '100%';
+            canvas.style.height = '500px';
+            const w = rect.width - 32;
+            const h = 500;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const bgColor = isDark ? '#0d0d1a' : '#f8f9fa';
+            canvas.style.background = bgColor;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, w, h);
+
+            const cx = w / 2;
+            const cy = 160;
+            const radius = Math.min(cx, cy) - 40;
+            const explode = 8;
+
+            const total = errorChartData.reduce((s, d) => s + d.count, 0);
+            let angles = [];
+            let startAngle = -Math.PI / 2;
+
+            errorChartData.forEach((d, i) => {
+                const sliceAngle = (d.count / total) * Math.PI * 2;
+                angles.push({ start: startAngle, end: startAngle + sliceAngle, index: i });
+                startAngle += sliceAngle;
+            });
+
+            // 2D 饼状图
+            angles.forEach((seg, i) => {
+                const isHovered = i === pieHoveredIndex;
+                const midAngle = (seg.start + seg.end) / 2;
+                const ex = isHovered ? Math.cos(midAngle) * explode : 0;
+                const ey = isHovered ? Math.sin(midAngle) * explode : 0;
+
+                ctx.fillStyle = PIE_COLORS[i % PIE_COLORS.length];
+                ctx.beginPath();
+                ctx.moveTo(cx + ex, cy + ey);
+                ctx.arc(cx + ex, cy + ey, radius, seg.start, seg.end);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = bgColor;
+                ctx.lineWidth = isHovered ? 3 : 2;
+                ctx.stroke();
+            });
+
+            // 中心空白圆（甜甜圈效果）
+            ctx.fillStyle = bgColor;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 中心文字
+            ctx.fillStyle = isDark ? '#fff' : '#333';
+            ctx.font = 'bold 16px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`共 ${errorChartData.length} 类`, cx, cy - 6);
+            ctx.font = '22px "Segoe UI", sans-serif';
+            ctx.fillText(`${total} 次`, cx, cy + 20);
+
+            // 图例
+            const legendY = cy + radius + 20;
+            const cols = Math.min(3, Math.ceil(errorChartData.length / 8));
+            const colW = w / cols;
+            let legendRects = [];
+            ctx.font = '13px "Segoe UI", sans-serif';
+            errorChartData.forEach((d, i) => {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const lx = 30 + col * colW;
+                const ly = legendY + row * 26;
+                const rx = lx - 4;
+                const ry = ly - 10;
+                const rw = colW - 12;
+                const rh = 22;
+
+                ctx.fillStyle = i === pieHoveredLegend ? 'rgba(255,255,255,0.1)' : 'transparent';
+                if (i === pieHoveredLegend) {
+                    ctx.fillRect(rx, ry, rw, rh);
+                }
+
+                ctx.fillStyle = PIE_COLORS[i % PIE_COLORS.length];
+                ctx.fillRect(lx, ly - 5, 10, 10);
+
+                ctx.fillStyle = i === pieHoveredLegend
+                    ? (isDark ? '#fff' : '#0088cc')
+                    : (isDark ? '#ddd' : '#333');
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                const short = d.className.split('.').pop();
+                const pct = ((d.count / total) * 100).toFixed(1);
+                ctx.fillText(`${short} (${d.count}次 ${pct}%)`, lx + 16, ly + 5);
+
+                legendRects.push({ rx, ry, rw, rh, index: i });
+            });
+
+            canvas._pieAngles = angles;
+            canvas._pieCx = cx;
+            canvas._pieCy = cy;
+            canvas._pieRadius = radius;
+            canvas._pieW = w;
+            canvas._legendRects = legendRects;
+        }
+
+        pieChart.addEventListener('mousemove', function(e) {
+            if (!pieChart._pieAngles) return;
+            const rect = pieChart.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const cx = pieChart._pieCx;
+            const cy = pieChart._pieCy;
+            const radius = pieChart._pieRadius;
+
+            // 先检查图例区域
+            let legendIdx = -1;
+            if (pieChart._legendRects) {
+                for (let i = 0; i < pieChart._legendRects.length; i++) {
+                    const r = pieChart._legendRects[i];
+                    if (mx >= r.rx && mx <= r.rx + r.rw && my >= r.ry && my <= r.ry + r.rh) {
+                        legendIdx = r.index;
+                        break;
+                    }
+                }
+            }
+
+            if (legendIdx >= 0) {
+                pieHoveredIndex = -1;
+                if (legendIdx !== pieHoveredLegend) {
+                    pieHoveredLegend = legendIdx;
+                    drawPieChart();
+                }
+                const d = errorChartData[legendIdx];
+                showPieTooltip(e, d);
+                pieChart.style.cursor = 'pointer';
+                return;
+            }
+
+            // 检查饼图区域
+            const dx = mx - cx;
+            const dy = my - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > radius) {
+                if (pieHoveredIndex >= 0 || pieHoveredLegend >= 0) {
+                    pieHoveredIndex = -1;
+                    pieHoveredLegend = -1;
+                    drawPieChart();
+                }
+                chartTooltip.style.display = 'none';
+                pieChart.style.cursor = 'default';
+                return;
+            }
+
+            pieHoveredLegend = -1;
+            let angle = Math.atan2(dy, dx);
+            if (angle < -Math.PI / 2) angle += Math.PI * 2;
+
+            let idx = -1;
+            for (let i = 0; i < pieChart._pieAngles.length; i++) {
+                const seg = pieChart._pieAngles[i];
+                if (angle >= seg.start && angle < seg.end) { idx = i; break; }
+            }
+
+            if (idx !== pieHoveredIndex) {
+                pieHoveredIndex = idx;
+                drawPieChart();
+            }
+
+            if (idx >= 0) {
+                showPieTooltip(e, errorChartData[idx]);
+                pieChart.style.cursor = 'pointer';
+            }
+        });
+
+        function showPieTooltip(e, d) {
+            const parts = d.className.split('.');
+            const shortClass = parts.length > 2 ? '..' + parts.slice(-2).join('.') : d.className;
+            const pct = ((d.count / errorChartData.reduce((s, x) => s + x.count, 0)) * 100).toFixed(1);
+            chartTooltip.innerHTML = `
+                <div class="tt-label">ERROR 重复 <span class="tt-count">${d.count}</span> 次</div>
+                <div style="color:#aaa;">占比: ${pct}%</div>
+                <div class="tt-time">${d.timeRange}</div>
+                <div>线程: ${d.thread}</div>
+                <div style="color:#aaa;margin-top:4px;">${shortClass}[${d.lineNum}]</div>
+                <div style="margin-top:2px;">${escapeHtml(d.message.length > 80 ? d.message.substring(0, 80) + '...' : d.message)}</div>
+                <div style="color:#2196f3;margin-top:6px;font-size:11px;">点击跳转日志详情</div>
+            `;
+            chartTooltip.style.display = 'block';
+            chartTooltip.style.left = Math.min(e.clientX + 16, window.innerWidth - 440) + 'px';
+            chartTooltip.style.top = Math.max(10, e.clientY - 10 - chartTooltip.offsetHeight) + 'px';
+        }
+
+        pieChart.addEventListener('mouseleave', function() {
+            pieHoveredIndex = -1;
+            pieHoveredLegend = -1;
+            drawPieChart();
+            chartTooltip.style.display = 'none';
+            pieChart.style.cursor = 'default';
+        });
+
+        function jumpToPieLog(d) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            const searchKeyword = `${d.className}[${d.lineNum}] - ${d.message}`;
+            const logTime = d.times[0];
+            if (logTime) {
+                const dateMatch = logTime.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+                if (dateMatch) {
+                    document.getElementById('startTime').value = `${dateMatch[1]}T${dateMatch[2]}`;
+                }
+            }
+            loadRawLog(file).then(() => {
+                rawSearchInput.value = searchKeyword;
+                performSearch();
+                if (searchMatches.length === 0 && d.traceId) {
+                    rawSearchInput.value = d.traceId;
+                    performSearch();
+                }
+            });
+        }
+
+        pieChart.addEventListener('click', function(e) {
+            const idx = pieHoveredLegend >= 0 ? pieHoveredLegend : pieHoveredIndex;
+            if (idx < 0) return;
+            jumpToPieLog(errorChartData[idx]);
+        });
+
+        // ========== TraceId 追踪 ==========
+        let traceIdMap = {};
+
+        function buildTraceIdMap() {
+            traceIdMap = {};
+            // 仅收集 traceId 非空的日志，直接按 traceId 分组
+            allLogs.forEach(log => {
+                const tid = log.traceId;
+                if (!tid || tid === 'N/A') return;
+                if (!traceIdMap[tid]) {
+                    traceIdMap[tid] = [];
+                }
+                traceIdMap[tid].push(log);
+            });
+            Object.keys(traceIdMap).forEach(tid => {
+                traceIdMap[tid].sort((a, b) => a.time.localeCompare(b.time));
+            });
+        }
+
+        function buildTraceIdSelect() {
+            if (Object.keys(traceIdMap).length === 0) buildTraceIdMap();
+            const sortedIds = Object.keys(traceIdMap).sort((a, b) => traceIdMap[b].length - traceIdMap[a].length);
+            traceCount.innerHTML = `共 ${sortedIds.length} 个 TraceId <span style="color:var(--text-accent);font-size:11px;margin-left:8px;">Ctrl + 点击跳转</span>`;
+            traceIdInput.value = '';
+            traceIdClearBtn.style.display = 'none';
+            traceLogList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">请选择一个 TraceId 查看完整调用链</div>';
+            renderTraceDropdown('');
+        }
+
+        let _lastTraceDropdownFilter = undefined;
+
+        function renderTraceDropdown(filter) {
+            // 避免重复渲染相同过滤条件
+            if (filter === _lastTraceDropdownFilter && traceIdDropdown.style.display === 'block') return;
+            _lastTraceDropdownFilter = filter;
+
+            const sortedIds = Object.keys(traceIdMap).sort((a, b) => traceIdMap[b].length - traceIdMap[a].length);
+            const filtered = filter ? sortedIds.filter(tid => tid.toUpperCase().includes(filter.toUpperCase())) : sortedIds;
+            const maxShow = 50;
+            const shown = filtered.slice(0, maxShow);
+            if (shown.length === 0) {
+                traceIdDropdown.innerHTML = '<div style="padding:8px 12px;color:var(--text-muted);font-size:13px;">无匹配结果</div>';
+            } else {
+                let html = '';
+                shown.forEach(tid => {
+                    const logs = traceIdMap[tid];
+                    const errorCount = logs.filter(l => l.level === 'ERROR').length;
+                    html += `<div class="trace-dropdown-item" data-tid="${escapeHtml(tid)}" style="padding:7px 14px;cursor:pointer;font-size:13px;font-family:monospace;border-bottom:1px solid var(--border-color);line-height:1.5;" onmouseenter="this.style.background='var(--bg-tertiary-hover)'" onmouseleave="this.style.background=''">${escapeHtml(tid)} <span style="color:var(--text-secondary);">(${logs.length}条${errorCount > 0 ? ' | ERROR:' + errorCount : ''})</span></div>`;
+                });
+                if (filtered.length > maxShow) {
+                    html += `<div style="padding:6px 14px;color:var(--text-muted);font-size:12px;text-align:center;">... 还有 ${filtered.length - maxShow} 个，请输入关键字筛选</div>`;
+                }
+                traceIdDropdown.innerHTML = html;
+                traceIdDropdown.querySelectorAll('.trace-dropdown-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const tid = this.dataset.tid;
+                        traceIdInput.value = tid;
+                        traceIdClearBtn.style.display = '';
+                        traceIdDropdown.style.display = 'none';
+                        _lastTraceDropdownFilter = undefined;
+                        displayTraceLogs(tid);
+                    });
+                });
+            }
+            traceIdDropdown.style.display = 'block';
+        }
+
+        traceIdInput.addEventListener('input', function() {
+            traceIdClearBtn.style.display = this.value ? '' : 'none';
+            renderTraceDropdown(this.value);
+        });
+
+        traceIdClearBtn.addEventListener('click', function() {
+            traceIdInput.value = '';
+            traceIdClearBtn.style.display = 'none';
+            _lastTraceDropdownFilter = undefined;
+            traceLogList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">请选择一个 TraceId 查看完整调用链</div>';
+            renderTraceDropdown('');
+            traceIdInput.focus();
+        });
+
+        traceIdInput.addEventListener('focus', function() {
+            if (Object.keys(traceIdMap).length === 0) buildTraceIdMap();
+            renderTraceDropdown(this.value);
+        });
+
+        traceIdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                traceIdDropdown.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!traceIdInput.contains(e.target) && !traceIdDropdown.contains(e.target) && e.target !== traceIdClearBtn) {
+                traceIdDropdown.style.display = 'none';
+            }
+        });
+
+        function displayTraceLogs(tid) {
+            const matchedLines = [];
+            rawLinesCache.forEach(line => {
+                if (line.includes(tid)) {
+                    matchedLines.push(line);
+                }
+            });
+
+            if (matchedLines.length === 0) {
+                traceLogList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">未找到该 TraceId 的日志</div>';
+                return;
+            }
+
+            const timePattern = /\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/;
+            const firstTime = (matchedLines[0].match(timePattern) || [''])[0];
+            const lastTime = (matchedLines[matchedLines.length - 1].match(timePattern) || [''])[0];
+            const errorCount = matchedLines.filter(l => l.includes(' ERROR ')).length;
+
+            let html = `
+                <div style="margin-bottom:12px;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;font-size:13px;">
+                    <strong>${escapeHtml(tid)}</strong>
+                    <span style="color:var(--text-secondary);margin-left:12px;">共 ${matchedLines.length} 条日志</span>
+                    <span style="color:#f44336;margin-left:8px;">ERROR: ${errorCount}</span>
+                    <span style="color:var(--text-secondary);margin-left:12px;">${firstTime} ~ ${lastTime}</span>
+                </div>
+            `;
+
+            const levelColors = { ERROR: '#f44336', WARN: '#ff9800', INFO: '#4caf50', DEBUG: '#2196f3' };
+            const logPattern = /^\[traceId:([^\]]*)\]\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+\[([^\]]+)\]\s+(DEBUG|INFO|ERROR|WARN)\s+(.+?)\[(\d+)\]\s+-\s+(.*)\r?$/;
+
+            matchedLines.forEach((line, i) => {
+                const match = line.match(logPattern);
+                if (!match) {
+                    html += `<div style="padding:0 8px;margin:0;font-family:monospace;font-size:12px;line-height:1.3;white-space:pre-wrap;word-break:break-all;">${escapeHtml(line)}</div>`;
+                    return;
+                }
+                const level = match[4];
+                const color = levelColors[level] || '#aaa';
+                const keyword = escapeHtml(`${match[5].trim()}[${match[6]}] - ${match[7].trim()}`);
+                html += `<div class="trace-log-row" data-keyword="${keyword}" data-time="${match[2]}" data-traceid="${escapeHtml(tid)}" style="padding:0 8px;border-left:3px solid ${color};margin:0;background:${i % 2 === 0 ? 'transparent' : 'var(--bg-tertiary)'};cursor:pointer;font-family:monospace;font-size:12px;line-height:1.3;white-space:pre-wrap;word-break:break-all;" onmouseenter="this.style.background='var(--bg-tertiary-hover)'" onmouseleave="this.style.background='${i % 2 === 0 ? 'transparent' : 'var(--bg-tertiary)'}'">${escapeHtml(line.trim())}</div>`;
+            });
+
+            traceLogList.innerHTML = html;
+            traceLogList.scrollTop = 0;
+
+            traceLogList.querySelectorAll('.trace-log-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    if (!e.ctrlKey && !e.metaKey) return;
+                    const file = fileInput.files[0];
+                    if (!file) return;
+                    const logTime = this.getAttribute('data-time');
+                    const keyword = this.getAttribute('data-keyword');
+                    const traceId = this.getAttribute('data-traceid');
+                    if (logTime) {
+                        const dm = logTime.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+                        if (dm) document.getElementById('startTime').value = `${dm[1]}T${dm[2]}`;
+                    }
+                    loadRawLog(file).then(() => {
+                        if (keyword) {
+                            rawSearchInput.value = keyword;
+                            performSearch();
+                            if (searchMatches.length === 0 && traceId) {
+                                rawSearchInput.value = traceId;
+                                performSearch();
+                            }
+                        }
+                    });
+                });
+            });
+        }
+
+        // ========== 线程耗时统计（复用 TraceId 追踪的 traceIdMap） ==========
+        let threadStatsCache = [];
+
+        function buildThreadStats() {
+            if (allLogs.length === 0) {
+                threadStatList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">暂无数据，请先解析日志文件</div>';
+                return;
+            }
+
+            // 复用 TraceId 追踪已有的分组数据，确保数量一致
+            buildTraceIdMap();
+
+            // 基于 traceIdMap 计算统计数据并缓存
+            threadStatsCache = Object.keys(traceIdMap).map(tid => {
+                const logs = traceIdMap[tid];
+                const firstLog = logs[0];
+                const lastLog = logs[logs.length - 1];
+                const firstTime = new Date(firstLog.time.replace(' ', 'T'));
+                const lastTime = new Date(lastLog.time.replace(' ', 'T'));
+                const durationMs = lastTime - firstTime;
+                const errorCount = logs.filter(l => l.level === 'ERROR').length;
+                const warnCount = logs.filter(l => l.level === 'WARN').length;
+                const threads = [...new Set(logs.map(l => l.thread))];
+                return {
+                    traceId: tid,
+                    count: logs.length,
+                    firstTime: firstLog.time,
+                    lastTime: lastLog.time,
+                    durationMs: durationMs,
+                    errorCount: errorCount,
+                    warnCount: warnCount,
+                    threads: threads
+                };
+            }).sort((a, b) => b.durationMs - a.durationMs);
+
+            threadTraceIdInput.value = '';
+            renderThreadStats('');
+        }
+
+        function renderThreadStats(filter) {
+            let filtered = threadStatsCache;
+            const hasSearch = !!filter;
+            if (filter) {
+                const f = filter.toUpperCase();
+                filtered = threadStatsCache.filter(s => s.traceId.toUpperCase().includes(f));
+            } else {
+                // 默认过滤掉 0ms 的（搜索时不限制）
+                filtered = threadStatsCache.filter(s => s.durationMs > 0);
+            }
+
+            threadCount.innerHTML = filter
+                ? `匹配 ${filtered.length} / ${threadStatsCache.length} 个 TraceId <span style="color:var(--text-accent);font-size:11px;margin-left:8px;">按总耗时降序排列</span>`
+                : `共 ${filtered.length} 个 TraceId（已隐藏 0ms）<span style="color:var(--text-accent);font-size:11px;margin-left:8px;">按总耗时降序排列</span>`;
+
+            if (filtered.length === 0) {
+                threadStatList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">无匹配结果</div>';
+                return;
+            }
+
+            const maxDuration = Math.max(...filtered.map(s => s.durationMs), 1);
+
+            function formatDuration(ms) {
+                if (ms < 1000) return ms + 'ms';
+                if (ms < 60000) return (ms / 1000).toFixed(2) + 's';
+                const m = Math.floor(ms / 60000);
+                const s = ((ms % 60000) / 1000).toFixed(1);
+                return m + 'm ' + s + 's';
+            }
+
+            let html = `
+                <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="background:var(--bg-tertiary);position:sticky;top:0;z-index:1;">
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">#</th>
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">TraceId</th>
+                        <th style="padding:8px 12px;text-align:right;font-size:12px;border-bottom:2px solid var(--border-color);">日志条数</th>
+                        <th style="padding:8px 12px;text-align:right;font-size:12px;border-bottom:2px solid var(--border-color);">ERROR</th>
+                        <th style="padding:8px 12px;text-align:right;font-size:12px;border-bottom:2px solid var(--border-color);">WARN</th>
+                        <th style="padding:8px 12px;text-align:right;font-size:12px;border-bottom:2px solid var(--border-color);">总耗时</th>
+                        <th style="padding:8px 12px;text-align:center;font-size:12px;border-bottom:2px solid var(--border-color);">耗时比例</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            filtered.forEach((s, i) => {
+                const barWidth = Math.max((s.durationMs / maxDuration) * 100, 0.5);
+                const barColor = s.durationMs > 60000 ? '#f44336' : s.durationMs > 10000 ? '#ff9800' : '#4caf50';
+                html += `
+                    <tr style="border-bottom:1px solid var(--border-color);${i % 2 === 0 ? '' : 'background:var(--bg-tertiary)'};" onmouseenter="this.style.background='var(--bg-tertiary-hover)'" onmouseleave="this.style.background='${i % 2 === 0 ? 'transparent' : 'var(--bg-tertiary)'}'">
+                        <td style="padding:6px 12px;color:var(--text-muted);">${i + 1}</td>
+                        <td style="padding:6px 12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;" title="${escapeHtml(s.traceId)}">${escapeHtml(s.traceId)}</td>
+                        <td style="padding:6px 12px;text-align:right;color:var(--text-secondary);">${s.count}</td>
+                        <td style="padding:6px 12px;text-align:right;color:${s.errorCount > 0 ? '#f44336' : 'var(--text-muted)'};">${s.errorCount}</td>
+                        <td style="padding:6px 12px;text-align:right;color:${s.warnCount > 0 ? '#ff9800' : 'var(--text-muted)'};">${s.warnCount}</td>
+                        <td style="padding:6px 12px;text-align:right;font-weight:bold;color:${barColor};">${formatDuration(s.durationMs)}</td>
+                        <td style="padding:6px 12px;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div style="flex:1;height:8px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden;">
+                                    <div style="height:100%;width:${barWidth}%;background:${barColor};border-radius:4px;"></div>
+                                </div>
+                                <span style="font-size:10px;color:var(--text-muted);min-width:42px;text-align:right;">${(s.durationMs / maxDuration * 100).toFixed(1)}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);${i % 2 === 0 ? '' : 'background:var(--bg-tertiary)'};">
+                        <td colspan="7" style="padding:2px 12px 6px 12px;font-size:11px;color:var(--text-muted);">
+                            <span>${s.firstTime}</span>
+                            <span style="margin:0 8px;">→</span>
+                            <span>${s.lastTime}</span>
+                            <span style="margin-left:12px;">线程: ${s.threads.join(', ')}</span>
+                        </td>
+                    </tr>`;
+            });
+
+            html += '</tbody></table>';
+            threadStatList.innerHTML = html;
+            threadStatList.scrollTop = 0;
+        }
+
+        // 输入过滤事件
+        threadTraceIdInput.addEventListener('input', function() {
+            threadTraceIdClearBtn.style.display = this.value ? '' : 'none';
+            renderThreadStats(this.value);
+            renderThreadDropdown(this.value);
+        });
+
+        threadTraceIdClearBtn.addEventListener('click', function() {
+            threadTraceIdInput.value = '';
+            threadTraceIdClearBtn.style.display = 'none';
+            _lastThreadDropdownFilter = undefined;
+            renderThreadStats('');
+            renderThreadDropdown('');
+            threadTraceIdInput.focus();
+        });
+
+        threadTraceIdInput.addEventListener('focus', function() {
+            renderThreadDropdown(this.value);
+        });
+
+        threadTraceIdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                threadTraceIdDropdown.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!threadTraceIdInput.contains(e.target) && !threadTraceIdDropdown.contains(e.target) && e.target !== threadTraceIdClearBtn) {
+                threadTraceIdDropdown.style.display = 'none';
+            }
+        });
+
+        let _lastThreadDropdownFilter = undefined;
+
+        function renderThreadDropdown(filter) {
+            if (filter === _lastThreadDropdownFilter && threadTraceIdDropdown.style.display === 'block') return;
+            _lastThreadDropdownFilter = filter;
+
+            const f = (filter || '').toUpperCase();
+            const matches = f ? threadStatsCache.filter(s => s.traceId.toUpperCase().includes(f)) : threadStatsCache;
+            const top10 = matches.slice(0, 10);
+            if (top10.length === 0) {
+                threadTraceIdDropdown.innerHTML = '<div style="padding:8px 12px;color:var(--text-muted);font-size:13px;">无匹配结果</div>';
+            } else {
+                let html = '';
+                top10.forEach(s => {
+                    html += `<div class="thread-dropdown-item" data-tid="${escapeHtml(s.traceId)}" style="padding:7px 14px;cursor:pointer;font-size:13px;font-family:monospace;border-bottom:1px solid var(--border-color);line-height:1.5;" onmouseenter="this.style.background='var(--bg-tertiary-hover)'" onmouseleave="this.style.background=''">${escapeHtml(s.traceId)} <span style="color:var(--text-secondary);">(${s.count}条 | ${formatDurationMs(s.durationMs)})</span></div>`;
+                });
+                if (matches.length > 10) {
+                    html += `<div style="padding:6px 14px;color:var(--text-muted);font-size:12px;text-align:center;">... 还有 ${matches.length - 10} 个，请输入关键字筛选</div>`;
+                }
+                threadTraceIdDropdown.innerHTML = html;
+                threadTraceIdDropdown.querySelectorAll('.thread-dropdown-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const tid = this.dataset.tid;
+                        threadTraceIdInput.value = tid;
+                        threadTraceIdClearBtn.style.display = '';
+                        threadTraceIdDropdown.style.display = 'none';
+                        _lastThreadDropdownFilter = undefined;
+                        renderThreadStats(tid);
+                    });
+                });
+            }
+            threadTraceIdDropdown.style.display = 'block';
+        }
+
+        function formatDurationMs(ms) {
+            if (ms < 1000) return ms + 'ms';
+            if (ms < 60000) return (ms / 1000).toFixed(2) + 's';
+            const m = Math.floor(ms / 60000);
+            const s = ((ms % 60000) / 1000).toFixed(1);
+            return m + 'm ' + s + 's';
+        }
+
+        // ========== 异常堆栈聚合（以 [traceId 为界，按 TraceId 分组展示） ==========
+        function buildExceptionStats() {
+            if (rawLinesCache.length === 0) {
+                exceptionList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">暂无数据，请先解析日志文件</div>';
+                return;
+            }
+
+            const logPattern = /^\[traceId:([^\]]*)\]\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+\[([^\]]+)\]\s+(DEBUG|INFO|ERROR|WARN)\s+(.+?)\[(\d+)\]\s+-\s+(.*)\r?$/;
+            const stackKeywordPattern = /(?:^\s+at\s|[a-z]+(?:\.[a-z]+)+[\w.$]*(?:Exception|Error)[:\s]|Caused\s+by:|\.\.\.\s+\d+\s+(?:more|common frames omitted))/i;
+            const lines = rawLinesCache.map(l => l.replace(/\r/g, ''));
+
+            // 第一遍：找到所有匹配日志格式的行索引
+            const logIndices = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (logPattern.test(lines[i])) logIndices.push(i);
+            }
+
+            // 收集所有异常块
+            const blocks = [];
+            for (let idx = 0; idx < logIndices.length; idx++) {
+                const blockStart = logIndices[idx];
+                const blockEnd = idx + 1 < logIndices.length ? logIndices[idx + 1] : lines.length;
+                const firstLine = lines[blockStart];
+
+                let hasStack = false;
+                for (let j = blockStart + 1; j < blockEnd; j++) {
+                    if (stackKeywordPattern.test(lines[j])) { hasStack = true; break; }
+                }
+                if (!hasStack) continue;
+
+                const match = firstLine.match(logPattern);
+                const tid = match[1].trim() || 'N/A';
+
+                let exType = 'Unknown';
+                for (let j = blockStart + 1; j < blockEnd; j++) {
+                    const sl = lines[j].trim();
+                    const exMatch = sl.match(/^(?:Caused\s+by:\s*)?([a-z]+(?:\.[a-z]+)+[\w.$]*(?:Exception|Error))/i);
+                    if (exMatch) { exType = exMatch[1]; break; }
+                }
+
+                const blockLines = lines.slice(blockStart, blockEnd);
+                const fullBlock = blockLines.map(l => l.trimEnd()).join('\n');
+
+                blocks.push({
+                    traceId: tid,
+                    exType: exType,
+                    time: match[2],
+                    exampleLine: firstLine.trim(),
+                    fullBlock: fullBlock
+                });
+            }
+
+            // 按 TraceId 分组（同一 TraceId 可能有多个异常块）
+            const tidMap = {};
+            blocks.forEach(b => {
+                if (!tidMap[b.traceId]) {
+                    tidMap[b.traceId] = { traceId: b.traceId, exType: b.exType, firstTime: b.time, lastTime: b.time, count: 0, exampleLine: b.exampleLine, fullBlock: b.fullBlock };
+                }
+                tidMap[b.traceId].count++;
+                tidMap[b.traceId].lastTime = b.time;
+            });
+
+            const stats = Object.values(tidMap);
+            stats.sort((a, b) => b.firstTime.localeCompare(a.firstTime));
+
+            exceptionCount.innerHTML = `共 ${stats.length} 个异常 TraceId`;
+
+            if (stats.length === 0) {
+                exceptionList.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px;">未检测到异常堆栈</div>';
+                return;
+            }
+
+            let html = `
+                <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="background:var(--bg-modal);position:sticky;top:0;z-index:2;">
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">#</th>
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">TraceId</th>
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">异常类型</th>
+                        <th style="padding:8px 12px;text-align:right;font-size:12px;border-bottom:2px solid var(--border-color);">次数</th>
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">时间</th>
+                        <th style="padding:8px 12px;text-align:left;font-size:12px;border-bottom:2px solid var(--border-color);">日志摘要</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            stats.forEach((s, idx) => {
+                const shortName = s.exType.split('.').pop();
+                const timeDisplay = s.count === 1 ? s.firstTime : `${s.firstTime} ~ ${s.lastTime}`;
+                html += `
+                    <tr style="border-bottom:1px solid var(--border-color);cursor:pointer;${idx % 2 === 0 ? '' : 'background:var(--bg-tertiary)'};" onmouseenter="this.style.background='var(--bg-tertiary-hover)'" onmouseleave="this.style.background='${idx % 2 === 0 ? 'transparent' : 'var(--bg-tertiary)'}'" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
+                        <td style="padding:6px 12px;color:var(--text-muted);">${idx + 1}</td>
+                        <td style="padding:6px 12px;font-family:monospace;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(s.traceId)}">${escapeHtml(s.traceId)}</td>
+                        <td style="padding:6px 12px;color:#f44336;font-weight:bold;" title="${escapeHtml(s.exType)}">${escapeHtml(shortName)}</td>
+                        <td style="padding:6px 12px;text-align:right;">${s.count}</td>
+                        <td style="padding:6px 12px;color:var(--text-secondary);font-size:11px;">${timeDisplay}</td>
+                        <td style="padding:6px 12px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;" title="${escapeHtml(s.exampleLine)}">${escapeHtml(s.exampleLine)}</td>
+                    </tr>
+                    <tr style="display:none;border-bottom:1px solid var(--border-color);${idx % 2 === 0 ? '' : 'background:var(--bg-tertiary)'};">
+                        <td colspan="6" style="padding:8px 12px;font-size:12px;">
+                            <pre style="white-space:pre-wrap;word-break:break-all;margin:0;padding:10px;background:var(--bg-tertiary);border-radius:4px;max-height:400px;overflow-y:auto;color:var(--text);">${escapeHtml(s.fullBlock)}</pre>
+                        </td>
+                    </tr>`;
+            });
+
+            html += '</tbody></table>';
+            exceptionList.innerHTML = html;
+            exceptionList.scrollTop = 0;
+        }
     </script>
 </body>
 </html>
